@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   createDay,
   createTask,
@@ -21,7 +21,7 @@ const formatDateKey = (date) => {
   return `${year}-${month}-${day}`
 }
 
-function Dashboard() {
+function Dashboard({ onBack }) {
   const [days, setDays] = useState([])
   const [selectedDayId, setSelectedDayId] = useState(() => localStorage.getItem(SELECTED_DAY_STORAGE_KEY) || '')
   const [draftTask, setDraftTask] = useState('')
@@ -35,7 +35,7 @@ function Dashboard() {
   const completedTasks = selectedDay?.tasks.filter((task) => task.done).length ?? 0
   const pendingTasks = (selectedDay?.tasks.length ?? 0) - completedTasks
 
-  const syncDays = (payload) => {
+  const syncDays = useCallback((payload) => {
     const nextDays = payload.board?.days || payload.days || []
     setDays(nextDays)
     setSelectedDayId((currentSelectedDayId) => {
@@ -45,9 +45,9 @@ function Dashboard() {
 
       return nextDays[0]?.id || ''
     })
-  }
+  }, [])
 
-  const loadPlanner = async () => {
+  const loadPlanner = useCallback(async () => {
     setIsLoading(true)
     setErrorMessage('')
 
@@ -59,7 +59,7 @@ function Dashboard() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [syncDays])
 
   const runMutation = async (operation) => {
     setIsSaving(true)
@@ -131,7 +131,7 @@ function Dashboard() {
 
   useEffect(() => {
     loadPlanner()
-  }, [])
+  }, [loadPlanner])
 
   useEffect(() => {
     if (activeDayId) {
@@ -261,6 +261,11 @@ function Dashboard() {
           <span className="eyebrow">Planejamento diario</span>
           <h1>Tarefas por dia</h1>
           <p>Selecione um dia no menu lateral para abrir a lista correspondente.</p>
+          {onBack ? (
+            <button type="button" className="sidebar-ghost-action" onClick={onBack}>
+              Voltar ao dashboard
+            </button>
+          ) : null}
         </div>
 
         <div className="sidebar-actions">
@@ -305,14 +310,21 @@ function Dashboard() {
         <div className="mobile-panel-sheet">
           <div className="mobile-panel-topbar">
             <span className="eyebrow">Atalhos do dia</span>
-            <button
-              type="button"
-              className="mobile-panel-close"
-              aria-label="Fechar painel"
-              onClick={() => setIsMobilePanelOpen(false)}
-            >
-              Fechar
-            </button>
+            <div className="mobile-topbar-actions">
+              {onBack ? (
+                <button type="button" className="mobile-panel-close" onClick={onBack}>
+                  Dashboard
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="mobile-panel-close"
+                aria-label="Fechar painel"
+                onClick={() => setIsMobilePanelOpen(false)}
+              >
+                Fechar
+              </button>
+            </div>
           </div>
 
           <div className="sidebar-actions mobile-sidebar-actions">

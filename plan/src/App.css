@@ -1,7 +1,274 @@
 .app-shell {
   min-height: 100svh;
+  padding: 28px;
   background:
-    radial-gradient(circle at top, rgba(255, 166, 77, 0.18), transparent 24%),
-    radial-gradient(circle at right top, rgba(74, 144, 226, 0.14), transparent 28%),
+    radial-gradient(circle at top left, rgba(247, 178, 103, 0.18), transparent 24%),
+    radial-gradient(circle at right top, rgba(91, 147, 255, 0.16), transparent 28%),
+    radial-gradient(circle at left bottom, rgba(90, 201, 165, 0.12), transparent 24%),
     linear-gradient(180deg, #0b1017 0%, #101823 52%, #0d141d 100%);
+}
+
+.workspace-home {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 24px;
+  color: #eef4ff;
+}
+
+.workspace-hero,
+.dashboard-card {
+  border: 1px solid rgba(191, 215, 255, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+}
+
+.workspace-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+  gap: 24px;
+  padding: 28px;
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 177, 94, 0.16), transparent 30%),
+    linear-gradient(135deg, rgba(20, 29, 43, 0.98), rgba(13, 19, 29, 0.98));
+}
+
+.hero-kicker,
+.card-kicker {
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #9fb7da;
+}
+
+.hero-copy h1,
+.card-head h2 {
+  margin: 10px 0 0;
+}
+
+.hero-copy h1 {
+  max-width: 12ch;
+  font-size: clamp(2.8rem, 6vw, 5.2rem);
+  line-height: 0.94;
+  letter-spacing: -0.07em;
+}
+
+.hero-copy p,
+.dashboard-card p,
+.mini-list {
+  color: rgba(225, 235, 255, 0.72);
+  line-height: 1.65;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.hero-button,
+.card-action {
+  border: 0;
+  border-radius: 16px;
+  padding: 14px 18px;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.hero-button:hover,
+.card-action:hover {
+  transform: translateY(-1px);
+}
+
+.hero-button.is-primary,
+.card-action {
+  background: #ffb15e;
+  color: #111722;
+}
+
+.hero-button {
+  background: rgba(255, 255, 255, 0.08);
+  color: #eef4ff;
+}
+
+.hero-button:disabled,
+.card-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.hero-panel {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.hero-metric {
+  padding: 18px 20px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(191, 215, 255, 0.08);
+}
+
+.hero-metric span,
+.card-stats span {
+  color: rgba(223, 234, 255, 0.66);
+}
+
+.hero-metric strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 2.4rem;
+}
+
+.overview-grid,
+.secondary-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.overview-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.secondary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dashboard-card {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at bottom right, rgba(255, 170, 98, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(18, 25, 37, 0.98), rgba(13, 18, 27, 0.99));
+}
+
+.dashboard-card.is-featured {
+  background:
+    radial-gradient(circle at top left, rgba(86, 157, 255, 0.15), transparent 36%),
+    linear-gradient(145deg, rgba(15, 30, 49, 0.98), rgba(11, 20, 31, 0.99));
+}
+
+.card-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.card-tag {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #c5d7f5;
+  font-size: 0.82rem;
+}
+
+.card-tag.is-live {
+  background: rgba(105, 210, 165, 0.14);
+  color: #abf1d0;
+}
+
+.card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.card-action.is-disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: #eef4ff;
+}
+
+.productivity-card {
+  overflow: hidden;
+}
+
+.productivity-chart {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  align-items: end;
+  min-height: 210px;
+}
+
+.chart-column {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.chart-track {
+  position: relative;
+  display: flex;
+  align-items: end;
+  width: 100%;
+  min-height: 150px;
+  padding: 10px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(191, 215, 255, 0.08);
+}
+
+.chart-bar {
+  display: block;
+  width: 100%;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #8bc3ff 0%, #ffb15e 100%);
+}
+
+.chart-column strong {
+  font-size: 1.15rem;
+}
+
+.chart-column small {
+  color: rgba(223, 234, 255, 0.6);
+}
+
+.mini-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 1080px) {
+  .workspace-hero,
+  .overview-grid,
+  .secondary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell {
+    padding: 16px;
+  }
+
+  .workspace-hero,
+  .dashboard-card {
+    padding: 20px;
+    border-radius: 24px;
+  }
+
+  .hero-copy h1 {
+    max-width: 100%;
+    font-size: clamp(2.3rem, 11vw, 3.4rem);
+  }
+
+  .productivity-chart {
+    gap: 10px;
+  }
+
+  .chart-track {
+    min-height: 120px;
+    padding: 8px;
+  }
 }
