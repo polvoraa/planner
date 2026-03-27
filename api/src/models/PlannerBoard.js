@@ -12,6 +12,7 @@ const taskSchema = new mongoose.Schema(
 const daySchema = new mongoose.Schema(
   {
     id: { type: String, required: true },
+    dateKey: { type: String, default: '' },
     label: { type: String, required: true },
     date: { type: String, required: true },
     note: { type: String, required: true },
