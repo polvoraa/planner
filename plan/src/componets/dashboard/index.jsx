@@ -1,8 +1,25 @@
 import { useEffect, useState } from 'react'
-import { createTask, deleteTask, fetchDays, updateTask } from '../../lib/plannerApi'
+import {
+  createDay,
+  createTask,
+  deleteDay,
+  deleteTask,
+  fetchDays,
+  openTodayDay,
+  updateTask,
+} from '../../lib/plannerApi'
 import './styles.css'
 
 const SELECTED_DAY_STORAGE_KEY = 'planner.selectedDayId'
+const DAY_IN_MS = 24 * 60 * 60 * 1000
+
+const formatDateKey = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
 
 function Dashboard() {
   const [days, setDays] = useState([])
@@ -19,7 +36,7 @@ function Dashboard() {
   const pendingTasks = (selectedDay?.tasks.length ?? 0) - completedTasks
 
   const syncDays = (payload) => {
-    const nextDays = payload.days || []
+    const nextDays = payload.board?.days || payload.days || []
     setDays(nextDays)
     setSelectedDayId((currentSelectedDayId) => {
       if (nextDays.some((day) => day.id === currentSelectedDayId)) {
@@ -55,6 +72,31 @@ function Dashboard() {
     } catch (error) {
       setErrorMessage(error.message)
       return false
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const runBoardMutation = async (operation, options = {}) => {
+    setIsSaving(true)
+    setErrorMessage('')
+
+    try {
+      const payload = await operation()
+      syncDays(payload)
+
+      if (options.selectDayId) {
+        const nextDayId = options.selectDayId(payload)
+
+        if (nextDayId) {
+          setSelectedDayId(nextDayId)
+        }
+      }
+
+      return payload
+    } catch (error) {
+      setErrorMessage(error.message)
+      return null
     } finally {
       setIsSaving(false)
     }
@@ -112,6 +154,44 @@ function Dashboard() {
   const handleDaySelect = (dayId) => {
     setSelectedDayId(dayId)
     setIsMobilePanelOpen(false)
+  }
+
+  const handleOpenTodayNote = async () => {
+    const payload = await runBoardMutation(() => openTodayDay(), {
+      selectDayId: (result) => result.dayId,
+    })
+
+    if (payload) {
+      setIsMobilePanelOpen(false)
+    }
+  }
+
+  const handleAddDay = async () => {
+    const datedDays = days
+      .map((day) => day.dateKey)
+      .filter(Boolean)
+      .map((dateKey) => new Date(`${dateKey}T12:00:00`))
+      .filter((date) => !Number.isNaN(date.getTime()))
+      .sort((left, right) => right.getTime() - left.getTime())
+
+    const baseDate = datedDays[0] || new Date()
+    const nextDateKey = formatDateKey(new Date(baseDate.getTime() + DAY_IN_MS))
+
+    const payload = await runBoardMutation(() => createDay(nextDateKey), {
+      selectDayId: (result) => result.dayId,
+    })
+
+    if (payload) {
+      setIsMobilePanelOpen(false)
+    }
+  }
+
+  const handleRemoveDay = async () => {
+    if (!activeDayId) {
+      return
+    }
+
+    await runBoardMutation(() => deleteDay(activeDayId))
   }
 
   const removeTask = async (taskId) => {
@@ -183,6 +263,15 @@ function Dashboard() {
           <p>Selecione um dia no menu lateral para abrir a lista correspondente.</p>
         </div>
 
+        <div className="sidebar-actions">
+          <button type="button" className="sidebar-action is-primary" onClick={handleOpenTodayNote} disabled={isSaving}>
+            {isSaving ? 'Salvando...' : 'Abrir nota de hoje'}
+          </button>
+          <button type="button" className="sidebar-action" onClick={handleAddDay} disabled={isSaving}>
+            Novo dia
+          </button>
+        </div>
+
         <nav className="day-nav" aria-label="Dias da semana">
           {days.map((day) => {
             const doneCount = day.tasks.filter((task) => task.done).length
@@ -223,6 +312,20 @@ function Dashboard() {
               onClick={() => setIsMobilePanelOpen(false)}
             >
               Fechar
+            </button>
+          </div>
+
+          <div className="sidebar-actions mobile-sidebar-actions">
+            <button
+              type="button"
+              className="sidebar-action is-primary"
+              onClick={handleOpenTodayNote}
+              disabled={isSaving}
+            >
+              {isSaving ? 'Salvando...' : 'Abrir nota de hoje'}
+            </button>
+            <button type="button" className="sidebar-action" onClick={handleAddDay} disabled={isSaving}>
+              Novo dia
             </button>
           </div>
 
@@ -267,17 +370,28 @@ function Dashboard() {
               <h3>{selectedDay.date}</h3>
             </div>
 
-            <button
-              type="button"
-              className="mobile-menu-button"
-              aria-label="Abrir painel do dia"
-              aria-expanded={isMobilePanelOpen}
-              onClick={() => setIsMobilePanelOpen(true)}
-            >
-              <span />
-              <span />
-              <span />
-            </button>
+            <div className="panel-actions">
+              <button
+                type="button"
+                className="day-delete-button"
+                disabled={isSaving}
+                onClick={handleRemoveDay}
+              >
+                Remover dia
+              </button>
+
+              <button
+                type="button"
+                className="mobile-menu-button"
+                aria-label="Abrir painel do dia"
+                aria-expanded={isMobilePanelOpen}
+                onClick={() => setIsMobilePanelOpen(true)}
+              >
+                <span />
+                <span />
+                <span />
+              </button>
+            </div>
           </div>
 
           <form className="task-form" onSubmit={handleTaskSubmit}>

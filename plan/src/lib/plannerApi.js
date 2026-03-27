@@ -15,6 +15,34 @@ export const fetchDays = async () => {
   return parseResponse(response)
 }
 
+export const createDay = async (dateKey) => {
+  const response = await fetch(`${API_BASE_URL}/days`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ dateKey }),
+  })
+
+  return parseResponse(response)
+}
+
+export const openTodayDay = async () => {
+  const response = await fetch(`${API_BASE_URL}/days/today`, {
+    method: 'POST',
+  })
+
+  return parseResponse(response)
+}
+
+export const deleteDay = async (dayId) => {
+  const response = await fetch(`${API_BASE_URL}/days/${dayId}`, {
+    method: 'DELETE',
+  })
+
+  return parseResponse(response)
+}
+
 export const createTask = async (dayId, text) => {
   const response = await fetch(`${API_BASE_URL}/days/${dayId}/tasks`, {
     method: 'POST',
