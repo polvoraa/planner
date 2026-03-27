@@ -1,148 +1,100 @@
 import { useEffect, useState } from 'react'
+import { createTask, deleteTask, fetchDays, updateTask } from '../../lib/plannerApi'
 import './styles.css'
 
-const STORAGE_KEY = 'planner.days'
 const SELECTED_DAY_STORAGE_KEY = 'planner.selectedDayId'
 
-const initialDays = [
-  {
-    id: 'today',
-    label: 'Hoje',
-    date: '26 Mar',
-    note: 'Fechar prioridades do dia e remover bloqueios antes do fim da tarde.',
-    tasks: [
-      { id: 1, text: 'Atualizar status do projeto Atlas', done: true },
-      { id: 2, text: 'Revisar tarefas da sprint com o time', done: false },
-      { id: 3, text: 'Enviar notas da daily para stakeholders', done: false },
-    ],
-  },
-  {
-    id: 'tomorrow',
-    label: 'Amanha',
-    date: '27 Mar',
-    note: 'Preparar backlog da semana e consolidar entregas do squad.',
-    tasks: [
-      { id: 4, text: 'Planejar kickoff da sprint 13', done: false },
-      { id: 5, text: 'Organizar pendencias de QA', done: false },
-    ],
-  },
-  {
-    id: 'monday',
-    label: 'Segunda',
-    date: '30 Mar',
-    note: 'Abrir a semana com foco em prioridades de execucao e alinhamento.',
-    tasks: [
-      { id: 6, text: 'Definir objetivo semanal do produto', done: false },
-    ],
-  },
-  {
-    id: 'tuesday',
-    label: 'Terca',
-    date: '31 Mar',
-    note: 'Dia ideal para revisoes, dependencias e checkpoints tecnicos.',
-    tasks: [
-      { id: 7, text: 'Revisar escopo com engenharia', done: false },
-    ],
-  },
-]
-
-const loadDays = () => {
-  const savedDays = localStorage.getItem(STORAGE_KEY)
-
-  if (!savedDays) {
-    return initialDays
-  }
-
-  try {
-    return JSON.parse(savedDays)
-  } catch {
-    return initialDays
-  }
-}
-
 function Dashboard() {
-  const [days, setDays] = useState(loadDays)
-  const [selectedDayId, setSelectedDayId] = useState(() => {
-    const storedDays = loadDays()
-    const savedSelectedDayId = localStorage.getItem(SELECTED_DAY_STORAGE_KEY)
-
-    if (savedSelectedDayId && storedDays.some((day) => day.id === savedSelectedDayId)) {
-      return savedSelectedDayId
-    }
-
-    return storedDays[0]?.id ?? initialDays[0].id
-  })
+  const [days, setDays] = useState([])
+  const [selectedDayId, setSelectedDayId] = useState(() => localStorage.getItem(SELECTED_DAY_STORAGE_KEY) || '')
   const [draftTask, setDraftTask] = useState('')
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
-  const activeDayId =
-    days.find((day) => day.id === selectedDayId)?.id ?? days[0]?.id ?? initialDays[0].id
+  const activeDayId = days.find((day) => day.id === selectedDayId)?.id ?? days[0]?.id ?? ''
   const selectedDay = days.find((day) => day.id === activeDayId) ?? days[0]
-  const completedTasks = selectedDay.tasks.filter((task) => task.done).length
-  const pendingTasks = selectedDay.tasks.length - completedTasks
+  const completedTasks = selectedDay?.tasks.filter((task) => task.done).length ?? 0
+  const pendingTasks = (selectedDay?.tasks.length ?? 0) - completedTasks
 
-  const addTask = () => {
+  const syncDays = (payload) => {
+    const nextDays = payload.days || []
+    setDays(nextDays)
+    setSelectedDayId((currentSelectedDayId) => {
+      if (nextDays.some((day) => day.id === currentSelectedDayId)) {
+        return currentSelectedDayId
+      }
+
+      return nextDays[0]?.id || ''
+    })
+  }
+
+  const loadPlanner = async () => {
+    setIsLoading(true)
+    setErrorMessage('')
+
+    try {
+      const payload = await fetchDays()
+      syncDays(payload)
+    } catch (error) {
+      setErrorMessage(error.message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const runMutation = async (operation) => {
+    setIsSaving(true)
+    setErrorMessage('')
+
+    try {
+      const payload = await operation()
+      syncDays(payload)
+      return true
+    } catch (error) {
+      setErrorMessage(error.message)
+      return false
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const addTask = async () => {
     const taskName = draftTask.trim()
 
-    if (!taskName) {
+    if (!taskName || !activeDayId) {
       return
     }
 
-    setDays((currentDays) =>
-      currentDays.map((day) =>
-        day.id === activeDayId
-          ? {
-              ...day,
-              tasks: [
-                ...day.tasks,
-                { id: Date.now(), text: taskName, done: false },
-              ],
-            }
-          : day,
-      ),
-    )
-    setDraftTask('')
+    const didSave = await runMutation(() => createTask(activeDayId, taskName))
+
+    if (didSave) {
+      setDraftTask('')
+    }
   }
 
-  const handleTaskSubmit = (event) => {
+  const handleTaskSubmit = async (event) => {
     event.preventDefault()
-    addTask()
+    await addTask()
   }
 
-  const toggleTask = (taskId) => {
-    setDays((currentDays) =>
-      currentDays.map((day) =>
-        day.id === activeDayId
-          ? {
-              ...day,
-              tasks: day.tasks.map((task) =>
-                task.id === taskId ? { ...task, done: !task.done } : task,
-              ),
-            }
-          : day,
-      ),
-    )
-  }
+  const toggleTask = async (taskId, done) => {
+    if (!activeDayId) {
+      return
+    }
 
-  const removeTask = (taskId) => {
-    setDays((currentDays) =>
-      currentDays.map((day) =>
-        day.id === activeDayId
-          ? {
-              ...day,
-              tasks: day.tasks.filter((task) => task.id !== taskId),
-            }
-          : day,
-      ),
-    )
+    await runMutation(() => updateTask(activeDayId, taskId, done))
   }
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(days))
-  }, [days])
+    loadPlanner()
+  }, [])
 
   useEffect(() => {
-    localStorage.setItem(SELECTED_DAY_STORAGE_KEY, activeDayId)
+    if (activeDayId) {
+      localStorage.setItem(SELECTED_DAY_STORAGE_KEY, activeDayId)
+    }
   }, [activeDayId])
 
   useEffect(() => {
@@ -160,6 +112,45 @@ function Dashboard() {
   const handleDaySelect = (dayId) => {
     setSelectedDayId(dayId)
     setIsMobilePanelOpen(false)
+  }
+
+  const removeTask = async (taskId) => {
+    if (!activeDayId) {
+      return
+    }
+
+    await runMutation(() => deleteTask(activeDayId, taskId))
+  }
+
+  if (isLoading) {
+    return (
+      <section className="daily-page">
+        <main className="daily-content">
+          <section className="task-panel status-panel">
+            <span className="eyebrow">Sincronizando</span>
+            <h2>Carregando planner...</h2>
+            <p>Aguarde enquanto buscamos seus dados no servidor.</p>
+          </section>
+        </main>
+      </section>
+    )
+  }
+
+  if (!selectedDay) {
+    return (
+      <section className="daily-page">
+        <main className="daily-content">
+          <section className="task-panel status-panel">
+            <span className="eyebrow">Planner vazio</span>
+            <h2>Nenhum dia disponivel.</h2>
+            <p>Verifique a conexao com a API ou reinicie a sincronizacao.</p>
+            <button type="button" className="status-action" onClick={loadPlanner}>
+              Tentar novamente
+            </button>
+          </section>
+        </main>
+      </section>
+    )
   }
 
   const selectedDaySummary = (
@@ -264,6 +255,12 @@ function Dashboard() {
         {selectedDaySummary}
 
         <section className="task-panel">
+          {errorMessage ? (
+            <div className="feedback-banner" role="alert">
+              {errorMessage}
+            </div>
+          ) : null}
+
           <div className="panel-heading">
             <div>
               <span className="eyebrow">Lista do dia</span>
@@ -293,9 +290,10 @@ function Dashboard() {
               value={draftTask}
               onChange={(event) => setDraftTask(event.target.value)}
               placeholder="Adicionar tarefa"
+              disabled={isSaving}
             />
-            <button type="button" onClick={addTask}>
-              Adicionar
+            <button type="submit" disabled={isSaving}>
+              {isSaving ? 'Salvando...' : 'Adicionar'}
             </button>
           </form>
 
@@ -306,7 +304,8 @@ function Dashboard() {
                   <input
                     type="checkbox"
                     checked={task.done}
-                    onChange={() => toggleTask(task.id)}
+                    disabled={isSaving}
+                    onChange={() => toggleTask(task.id, !task.done)}
                   />
                   <span>{task.text}</span>
                 </label>
@@ -314,6 +313,7 @@ function Dashboard() {
                 <button
                   type="button"
                   className="task-remove"
+                  disabled={isSaving}
                   onClick={() => removeTask(task.id)}
                   aria-label={`Remover tarefa ${task.text}`}
                 >
