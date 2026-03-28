@@ -4,6 +4,7 @@ const formResponseSchema = new mongoose.Schema(
   {
     name: { type: String, default: '' },
     email: { type: String, default: '' },
+    company: { type: String, default: '' },
     message: { type: String, default: '' },
     source: { type: String, default: '' },
     metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
@@ -14,17 +15,64 @@ const formResponseSchema = new mongoose.Schema(
   },
 )
 
-const DEFAULT_COLLECTION_NAME = process.env.RESPONSES_COLLECTION_NAME || 'responses'
-const DEFAULT_MODEL_NAME = 'FormResponse'
+const buildResponseSourceConfig = ({
+  key,
+  dbName,
+  collectionName,
+  fallbackSource,
+}) => ({
+  key,
+  dbName,
+  collectionName,
+  fallbackSource,
+})
 
-export const getFormResponseModel = () => {
-  const databaseName = process.env.RESPONSES_DB_NAME
-  const connection = databaseName ? mongoose.connection.useDb(databaseName) : mongoose.connection
-  const existingModel = connection.models[DEFAULT_MODEL_NAME]
+export const getResponseSources = () => {
+  const sources = []
+
+  const primaryDbName = String(process.env.RESPONSES_DB_NAME || '').trim()
+  const primaryCollectionName = String(process.env.RESPONSES_COLLECTION_NAME || 'responses').trim() || 'responses'
+  const primaryFallbackSource = String(process.env.RESPONSES_FALLBACK_SOURCE || '').trim()
+
+  sources.push(
+    buildResponseSourceConfig({
+      key: 'primary',
+      dbName: primaryDbName,
+      collectionName: primaryCollectionName,
+      fallbackSource: primaryFallbackSource,
+    }),
+  )
+
+  const secondaryDbName = String(process.env.RESPONSES_SECONDARY_DB_NAME || '').trim()
+  const secondaryCollectionName = String(
+    process.env.RESPONSES_SECONDARY_COLLECTION_NAME || 'responses',
+  ).trim() || 'responses'
+  const secondaryFallbackSource = String(
+    process.env.RESPONSES_SECONDARY_FALLBACK_SOURCE || secondaryDbName,
+  ).trim()
+
+  if (secondaryDbName) {
+    sources.push(
+      buildResponseSourceConfig({
+        key: 'secondary',
+        dbName: secondaryDbName,
+        collectionName: secondaryCollectionName,
+        fallbackSource: secondaryFallbackSource,
+      }),
+    )
+  }
+
+  return sources
+}
+
+export const getFormResponseModel = ({ key, dbName, collectionName }) => {
+  const connection = dbName ? mongoose.connection.useDb(dbName) : mongoose.connection
+  const modelName = `FormResponse_${key}`
+  const existingModel = connection.models[modelName]
 
   if (existingModel) {
     return existingModel
   }
 
-  return connection.model(DEFAULT_MODEL_NAME, formResponseSchema, DEFAULT_COLLECTION_NAME)
+  return connection.model(modelName, formResponseSchema, collectionName)
 }

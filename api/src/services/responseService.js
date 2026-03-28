@@ -1,49 +1,65 @@
-import { getFormResponseModel } from '../models/FormResponse.js'
+import { getFormResponseModel, getResponseSources } from '../models/FormResponse.js'
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-const buildQuery = ({ source, search }) => {
-  const query = {}
-
-  if (source) {
-    query.source = source
+const buildSearchQuery = (search) => {
+  if (!search) {
+    return {}
   }
 
-  if (search) {
-    const regex = new RegExp(escapeRegex(search), 'i')
-    query.$or = [
+  const regex = new RegExp(escapeRegex(search), 'i')
+
+  return {
+    $or: [
       { name: regex },
       { email: regex },
+      { company: regex },
       { message: regex },
       { source: regex },
-    ]
+    ],
   }
-
-  return query
 }
 
-const formatResponse = (response) => ({
-  id: response._id.toString(),
+const formatResponse = (response, sourceConfig) => ({
+  id: `${sourceConfig.key}:${response._id.toString()}`,
   name: response.name || 'Sem nome',
   email: response.email || 'Sem email',
+  company: response.company || '',
   message: response.message || '',
-  source: response.source || 'desconhecido',
+  source: response.source || sourceConfig.fallbackSource || sourceConfig.dbName || 'desconhecido',
   metadata: response.metadata || {},
   createdAt: response.createdAt || null,
   updatedAt: response.updatedAt || null,
 })
 
 export const listResponses = async ({ source, search, limit }) => {
-  const FormResponse = getFormResponseModel()
   const normalizedLimit = Math.min(Math.max(Number(limit) || 50, 1), 200)
-  const query = buildQuery({
-    source: String(source || '').trim(),
-    search: String(search || '').trim(),
-  })
+  const normalizedSource = String(source || '').trim()
+  const normalizedSearch = String(search || '').trim()
+  const query = buildSearchQuery(normalizedSearch)
 
-  const responses = await FormResponse.find(query).sort({ createdAt: -1 }).limit(normalizedLimit).lean()
+  const responsesBySource = await Promise.all(
+    getResponseSources().map(async (sourceConfig) => {
+      const FormResponse = getFormResponseModel(sourceConfig)
+      const responses = await FormResponse.find(query)
+        .sort({ createdAt: -1 })
+        .limit(normalizedLimit)
+        .lean()
 
-  const items = responses.map(formatResponse)
+      return responses.map((response) => formatResponse(response, sourceConfig))
+    }),
+  )
+
+  const items = responsesBySource
+    .flat()
+    .filter((item) => !normalizedSource || item.source === normalizedSource)
+    .sort((first, second) => {
+      const firstDate = first.createdAt ? new Date(first.createdAt).getTime() : 0
+      const secondDate = second.createdAt ? new Date(second.createdAt).getTime() : 0
+      return secondDate - firstDate
+    })
+    .slice(0, normalizedLimit)
+
   const summary = {
     total: items.length,
     bySource: items.reduce((accumulator, item) => {
