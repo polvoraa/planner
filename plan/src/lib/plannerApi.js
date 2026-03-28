@@ -74,3 +74,23 @@ export const deleteTask = async (dayId, taskId) => {
 
   return parseResponse(response)
 }
+
+export const fetchResponses = async ({ source = '', search = '', limit = 50 } = {}) => {
+  const params = new URLSearchParams()
+
+  if (source) {
+    params.set('source', source)
+  }
+
+  if (search) {
+    params.set('search', search)
+  }
+
+  if (limit) {
+    params.set('limit', String(limit))
+  }
+
+  const query = params.toString()
+  const response = await fetch(`${API_BASE_URL}/responses${query ? `?${query}` : ''}`)
+  return parseResponse(response)
+}

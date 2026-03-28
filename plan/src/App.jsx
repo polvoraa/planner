@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import Dashboard from './componets/dashboard'
 import Dock from './components/dock/Dock'
-import { fetchDays } from './lib/plannerApi'
+import ResponsesHub from './components/responses/ResponsesHub'
+import { fetchDays, fetchResponses } from './lib/plannerApi'
 import './App.css'
 
 const routes = {
@@ -53,6 +54,7 @@ const getViewFromHash = (hash) => {
 function App() {
   const [activeView, setActiveView] = useState(() => getViewFromHash(window.location.hash))
   const [plannerDays, setPlannerDays] = useState([])
+  const [responsesSummary, setResponsesSummary] = useState({ total: 0, bySource: {} })
 
   useEffect(() => {
     const syncViewWithHash = () => {
@@ -75,6 +77,19 @@ function App() {
     }
 
     loadPlannerPreview()
+  }, [activeView])
+
+  useEffect(() => {
+    const loadResponsesPreview = async () => {
+      try {
+        const payload = await fetchResponses({ limit: 20 })
+        setResponsesSummary(payload.summary || { total: 0, bySource: {} })
+      } catch {
+        setResponsesSummary({ total: 0, bySource: {} })
+      }
+    }
+
+    loadResponsesPreview()
   }, [activeView])
 
   const navigateTo = (view) => {
@@ -135,20 +150,24 @@ function App() {
     )
   }
 
-  if (activeView === 'messages' || activeView === 'profile') {
-    const viewCopy = activeView === 'messages'
-      ? {
-          eyebrow: 'Mensagens',
-          title: 'Hub de respostas em construcao.',
-          description:
-            'Essa area ainda nao foi implementada. O atalho ja navega para a rota correta, e a pagina de tarefas continua funcionando normalmente.',
-        }
-      : {
-          eyebrow: 'Perfil',
-          title: 'Painel de perfil em construcao.',
-          description:
-            'Esse espaco fica pronto para configuracoes pessoais e preferencias do workspace quando voce decidir evoluir essa parte do projeto.',
-        }
+  if (activeView === 'messages') {
+    return (
+      <main className="app-shell app-shell-with-dock">
+        <ResponsesHub onBack={openHome} />
+        <div className="app-dock">
+          <Dock items={dockItems} panelHeight={32} baseItemSize={48} magnification={64} />
+        </div>
+      </main>
+    )
+  }
+
+  if (activeView === 'profile') {
+    const viewCopy = {
+      eyebrow: 'Perfil',
+      title: 'Painel de perfil em construcao.',
+      description:
+        'Esse espaco fica pronto para configuracoes pessoais e preferencias do workspace quando voce decidir evoluir essa parte do projeto.',
+    }
 
     return (
       <main className="app-shell app-shell-with-dock">
@@ -232,12 +251,16 @@ function App() {
                 <span className="card-kicker">Mensagens</span>
                 <h2>Hub de respostas</h2>
               </div>
-              <span className="card-tag">Em breve</span>
+              <span className="card-tag is-live">Conectado</span>
             </div>
             <p>
               Central para respostas de formularios dos seus sites, com filtros por origem, prioridade e
               status de atendimento.
             </p>
+            <div className="card-stats">
+              <span>{responsesSummary.total} respostas visiveis</span>
+              <span>{Object.keys(responsesSummary.bySource || {}).length} origens</span>
+            </div>
             <button type="button" className="card-action" onClick={() => navigateTo('messages')}>
               Entrar
             </button>

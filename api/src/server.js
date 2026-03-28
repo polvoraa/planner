@@ -11,6 +11,7 @@ import {
   removeTaskFromDay,
   updateTaskState,
 } from './services/plannerService.js'
+import { listResponses } from './services/responseService.js'
 
 const app = express()
 const port = Number(process.env.PORT || 4000)
@@ -35,6 +36,19 @@ app.get('/api/health', (_request, response) => {
 app.get('/api/days', async (_request, response, next) => {
   try {
     const data = await listDays()
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.get('/api/responses', async (request, response, next) => {
+  try {
+    const data = await listResponses({
+      source: request.query.source,
+      search: request.query.search,
+      limit: request.query.limit,
+    })
     response.json(data)
   } catch (error) {
     next(error)
