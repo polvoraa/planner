@@ -3,6 +3,13 @@ import express from 'express'
 import cors from 'cors'
 import mongoose from 'mongoose'
 import {
+  authenticateUser,
+  clearSessionCookie,
+  createSessionCookie,
+  readSession,
+  requireAuth,
+} from './services/authService.js'
+import {
   addTaskToDay,
   addDay,
   ensureTodayDay,
@@ -33,6 +40,44 @@ app.get('/api/health', (_request, response) => {
   response.json({ ok: true })
 })
 
+app.get('/api/auth/session', (request, response, next) => {
+  try {
+    const session = readSession(request)
+    response.json({
+      authenticated: Boolean(session),
+      user: session ? { username: session.username } : null,
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/auth/login', (request, response) => {
+  const username = String(request.body?.username || '').trim()
+  const password = String(request.body?.password || '')
+
+  if (!username || !password) {
+    response.status(400).json({ message: 'Usuario e senha sao obrigatorios.' })
+    return
+  }
+
+  if (!authenticateUser({ username, password })) {
+    response.status(401).json({ message: 'Credenciais invalidas.' })
+    return
+  }
+
+  response.setHeader('Set-Cookie', createSessionCookie(username))
+  response.json({
+    authenticated: true,
+    user: { username },
+  })
+})
+
+app.post('/api/auth/logout', (_request, response) => {
+  response.setHeader('Set-Cookie', clearSessionCookie())
+  response.json({ authenticated: false })
+})
+
 app.get('/api/days', async (_request, response, next) => {
   try {
     const data = await listDays()
@@ -42,7 +87,7 @@ app.get('/api/days', async (_request, response, next) => {
   }
 })
 
-app.get('/api/responses', async (request, response, next) => {
+app.get('/api/responses', requireAuth, async (request, response, next) => {
   try {
     const data = await listResponses({
       source: request.query.source,

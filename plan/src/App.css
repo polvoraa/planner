@@ -55,6 +55,57 @@
   line-height: 1.7;
 }
 
+.login-gate {
+  width: min(980px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  gap: 24px;
+  align-items: center;
+  color: #eef4ff;
+}
+
+.login-copy,
+.login-card {
+  border: 1px solid rgba(191, 215, 255, 0.12);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+}
+
+.login-copy {
+  padding: 32px;
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 177, 94, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(20, 29, 43, 0.98), rgba(13, 19, 29, 0.98));
+}
+
+.login-copy h1 {
+  margin: 12px 0 0;
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+}
+
+.login-copy p {
+  max-width: 42ch;
+  color: rgba(225, 235, 255, 0.72);
+  line-height: 1.7;
+}
+
+.login-card {
+  display: grid;
+  gap: 16px;
+  padding: 28px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at bottom right, rgba(255, 170, 98, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(18, 25, 37, 0.98), rgba(13, 18, 27, 0.99));
+}
+
+.login-submit {
+  justify-content: center;
+}
+
 .responses-page {
   width: min(1240px, 100%);
   margin: 0 auto;
@@ -95,6 +146,22 @@
 .response-meta {
   color: rgba(225, 235, 255, 0.72);
   line-height: 1.65;
+}
+
+.responses-auth-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.responses-user-chip {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #eef4ff;
+  font-size: 0.85rem;
 }
 
 .responses-metric-grid,
@@ -411,6 +478,7 @@
 }
 
 @media (max-width: 1080px) {
+  .login-gate,
   .responses-page,
   .workspace-hero,
   .overview-grid,
@@ -431,6 +499,8 @@
   .workspace-hero,
   .dashboard-card,
   .placeholder-view,
+  .login-copy,
+  .login-card,
   .responses-sidebar,
   .responses-toolbar,
   .responses-empty-state,

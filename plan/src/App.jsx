@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
+import LoginGate from './components/auth/LoginGate'
 import Dashboard from './componets/dashboard'
 import Dock from './components/dock/Dock'
 import ResponsesHub from './components/responses/ResponsesHub'
-import { fetchDays, fetchResponses } from './lib/plannerApi'
+import { fetchDays, fetchResponses, fetchSession } from './lib/plannerApi'
 import './App.css'
 
 const routes = {
@@ -55,6 +56,11 @@ function App() {
   const [activeView, setActiveView] = useState(() => getViewFromHash(window.location.hash))
   const [plannerDays, setPlannerDays] = useState([])
   const [responsesSummary, setResponsesSummary] = useState({ total: 0, bySource: {} })
+  const [authState, setAuthState] = useState({
+    checked: false,
+    authenticated: false,
+    user: null,
+  })
 
   useEffect(() => {
     const syncViewWithHash = () => {
@@ -64,6 +70,27 @@ function App() {
     window.addEventListener('hashchange', syncViewWithHash)
 
     return () => window.removeEventListener('hashchange', syncViewWithHash)
+  }, [])
+
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const payload = await fetchSession()
+        setAuthState({
+          checked: true,
+          authenticated: Boolean(payload.authenticated),
+          user: payload.user || null,
+        })
+      } catch {
+        setAuthState({
+          checked: true,
+          authenticated: false,
+          user: null,
+        })
+      }
+    }
+
+    loadSession()
   }, [])
 
   useEffect(() => {
@@ -81,6 +108,11 @@ function App() {
 
   useEffect(() => {
     const loadResponsesPreview = async () => {
+      if (!authState.authenticated) {
+        setResponsesSummary({ total: 0, bySource: {} })
+        return
+      }
+
       try {
         const payload = await fetchResponses({ limit: 20 })
         setResponsesSummary(payload.summary || { total: 0, bySource: {} })
@@ -90,7 +122,7 @@ function App() {
     }
 
     loadResponsesPreview()
-  }, [activeView])
+  }, [activeView, authState.authenticated])
 
   const navigateTo = (view) => {
     window.location.hash = routes[view]
@@ -153,7 +185,35 @@ function App() {
   if (activeView === 'messages') {
     return (
       <main className="app-shell app-shell-with-dock">
-        <ResponsesHub onBack={openHome} />
+        {!authState.checked ? (
+          <section className="placeholder-view">
+            <span className="hero-kicker">Autenticacao</span>
+            <h1>Validando sessao...</h1>
+            <p>Aguarde enquanto verificamos se voce ja tem acesso ao hub.</p>
+          </section>
+        ) : authState.authenticated ? (
+          <ResponsesHub
+            onBack={openHome}
+            user={authState.user}
+            onLogout={() =>
+              setAuthState({
+                checked: true,
+                authenticated: false,
+                user: null,
+              })
+            }
+          />
+        ) : (
+          <LoginGate
+            onAuthenticated={(user) =>
+              setAuthState({
+                checked: true,
+                authenticated: true,
+                user,
+              })
+            }
+          />
+        )}
         <div className="app-dock">
           <Dock items={dockItems} panelHeight={32} baseItemSize={48} magnification={64} />
         </div>
@@ -258,8 +318,14 @@ function App() {
               status de atendimento.
             </p>
             <div className="card-stats">
-              <span>{responsesSummary.total} respostas visiveis</span>
-              <span>{Object.keys(responsesSummary.bySource || {}).length} origens</span>
+              <span>
+                {authState.authenticated ? `${responsesSummary.total} respostas visiveis` : 'Acesso protegido'}
+              </span>
+              <span>
+                {authState.authenticated
+                  ? `${Object.keys(responsesSummary.bySource || {}).length} origens`
+                  : 'Login necessario'}
+              </span>
             </div>
             <button type="button" className="card-action" onClick={() => navigateTo('messages')}>
               Entrar

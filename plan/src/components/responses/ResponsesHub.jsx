@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { fetchResponses } from '../../lib/plannerApi'
+import { fetchResponses, logout } from '../../lib/plannerApi'
 
 const formatDate = (value) => {
   if (!value) {
@@ -18,7 +18,7 @@ const formatDate = (value) => {
   }).format(date)
 }
 
-function ResponsesHub({ onBack }) {
+function ResponsesHub({ onBack, user, onLogout }) {
   const [responses, setResponses] = useState([])
   const [summary, setSummary] = useState({ total: 0, bySource: {} })
   const [sourceFilter, setSourceFilter] = useState('')
@@ -61,6 +61,14 @@ function ResponsesHub({ onBack }) {
     return knownSources
   }, [sourceFilter, summary.bySource])
 
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } finally {
+      onLogout()
+    }
+  }
+
   return (
     <section className="responses-page">
       <aside className="responses-sidebar">
@@ -71,6 +79,12 @@ function ResponsesHub({ onBack }) {
             Visualize os envios dos formularios conectados ao mesmo cluster MongoDB e filtre por
             origem ou texto.
           </p>
+          <div className="responses-auth-row">
+            <span className="responses-user-chip">{user?.username || 'Sessao ativa'}</span>
+            <button type="button" className="sidebar-ghost-action" onClick={handleLogout}>
+              Sair
+            </button>
+          </div>
           {onBack ? (
             <button type="button" className="sidebar-ghost-action" onClick={onBack}>
               Voltar ao dashboard
