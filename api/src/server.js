@@ -5,7 +5,9 @@ import mongoose from 'mongoose'
 import {
   authenticateUser,
   clearSessionCookie,
-  createSessionCookie,
+  createSessionForUser,
+  ensureSeedAdmin,
+  invalidateSession,
   readSession,
   requireAuth,
 } from './services/authService.js'
@@ -23,7 +25,10 @@ import { listResponses } from './services/responseService.js'
 const app = express()
 const port = Number(process.env.PORT || 4000)
 const mongoUri = process.env.MONGODB_URI
-const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173'
+const allowedOrigins = String(process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map((item) => item.trim())
+  .filter(Boolean)
 
 if (!mongoUri) {
   throw new Error('MONGODB_URI nao configurado.')
@@ -31,7 +36,15 @@ if (!mongoUri) {
 
 app.use(
   cors({
-    origin: clientUrl,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true)
+        return
+      }
+
+      callback(new Error('Origem nao permitida por CORS.'))
+    },
+    credentials: true,
   }),
 )
 app.use(express.json())
@@ -40,19 +53,21 @@ app.get('/api/health', (_request, response) => {
   response.json({ ok: true })
 })
 
-app.get('/api/auth/session', (request, response, next) => {
+app.get('/api/auth/session', async (request, response, next) => {
   try {
-    const session = readSession(request)
+    const session = await readSession(request)
     response.json({
       authenticated: Boolean(session),
-      user: session ? { username: session.username } : null,
+      user: session
+        ? { id: session.userId, username: session.username, role: session.role }
+        : null,
     })
   } catch (error) {
     next(error)
   }
 })
 
-app.post('/api/auth/login', (request, response) => {
+app.post('/api/auth/login', async (request, response, next) => {
   const username = String(request.body?.username || '').trim()
   const password = String(request.body?.password || '')
 
@@ -61,19 +76,32 @@ app.post('/api/auth/login', (request, response) => {
     return
   }
 
-  if (!authenticateUser({ username, password })) {
-    response.status(401).json({ message: 'Credenciais invalidas.' })
+  try {
+    const user = await authenticateUser({ username, password })
+
+    if (!user) {
+      response.status(401).json({ message: 'Credenciais invalidas.' })
+      return
+    }
+
+    response.setHeader('Set-Cookie', await createSessionForUser(user._id.toString()))
+    response.json({
+      authenticated: true,
+      user: { id: user._id.toString(), username: user.username, role: user.role },
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/auth/logout', async (request, response, next) => {
+  try {
+    await invalidateSession(request)
+  } catch (error) {
+    next(error)
     return
   }
 
-  response.setHeader('Set-Cookie', createSessionCookie(username))
-  response.json({
-    authenticated: true,
-    user: { username },
-  })
-})
-
-app.post('/api/auth/logout', (_request, response) => {
   response.setHeader('Set-Cookie', clearSessionCookie())
   response.json({ authenticated: false })
 })
@@ -217,6 +245,7 @@ app.use((error, _request, response, _next) => {
 
 const startServer = async () => {
   await mongoose.connect(mongoUri)
+  await ensureSeedAdmin()
   app.listen(port, () => {
     console.log(`Planner API ativa em http://localhost:${port}`)
   })

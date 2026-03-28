@@ -1,36 +1,26 @@
 import crypto from 'node:crypto'
+import { promisify } from 'node:util'
+import { getAuthSessionModel, getAuthUserModel } from '../models/AuthUser.js'
 
 const SESSION_COOKIE_NAME = 'planner_session'
-const SESSION_DURATION_MS = 1000 * 60 * 60 * 12
+const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 7
+const scryptAsync = promisify(crypto.scrypt)
 
-const getAuthConfig = () => {
-  const username = process.env.ADMIN_USERNAME
-  const password = process.env.ADMIN_PASSWORD
+const getAuthSecret = () => {
   const secret = process.env.AUTH_SECRET
 
-  if (!username || !password || !secret) {
-    throw new Error('ADMIN_USERNAME, ADMIN_PASSWORD e AUTH_SECRET precisam estar configurados.')
+  if (!secret) {
+    throw new Error('AUTH_SECRET precisa estar configurado.')
   }
 
-  return { username, password, secret }
+  return secret
 }
 
 const base64UrlEncode = (value) => Buffer.from(value).toString('base64url')
 const base64UrlDecode = (value) => Buffer.from(value, 'base64url').toString('utf8')
 
-const safeCompare = (left, right) => {
-  const leftBuffer = Buffer.from(String(left))
-  const rightBuffer = Buffer.from(String(right))
-
-  if (leftBuffer.length !== rightBuffer.length) {
-    return false
-  }
-
-  return crypto.timingSafeEqual(leftBuffer, rightBuffer)
-}
-
-const sign = (payload, secret) =>
-  crypto.createHmac('sha256', secret).update(payload).digest('base64url')
+const hashToken = (token) =>
+  crypto.createHmac('sha256', getAuthSecret()).update(token).digest('hex')
 
 const parseCookies = (cookieHeader = '') =>
   cookieHeader
@@ -50,53 +40,43 @@ const parseCookies = (cookieHeader = '') =>
 
 const getSessionCookie = (request) => parseCookies(request.headers.cookie)[SESSION_COOKIE_NAME] || ''
 
-const buildCookieValue = (username, secret) => {
-  const payload = {
-    username,
-    expiresAt: Date.now() + SESSION_DURATION_MS,
+const safeCompare = (left, right) => {
+  const leftBuffer = Buffer.from(String(left))
+  const rightBuffer = Buffer.from(String(right))
+
+  if (leftBuffer.length !== rightBuffer.length) {
+    return false
   }
 
-  const encodedPayload = base64UrlEncode(JSON.stringify(payload))
-  const signature = sign(encodedPayload, secret)
-  return `${encodedPayload}.${signature}`
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer)
 }
 
-const parseSessionCookie = (cookieValue, secret) => {
-  const [encodedPayload = '', signature = ''] = String(cookieValue).split('.')
+const createPasswordHash = async (password) => {
+  const salt = crypto.randomBytes(16).toString('hex')
+  const derivedKey = await scryptAsync(password, salt, 64)
+  return `${salt}:${Buffer.from(derivedKey).toString('hex')}`
+}
 
-  if (!encodedPayload || !signature) {
-    return null
+const verifyPasswordHash = async (password, passwordHash) => {
+  const [salt = '', storedHash = ''] = String(passwordHash).split(':')
+
+  if (!salt || !storedHash) {
+    return false
   }
 
-  const expectedSignature = sign(encodedPayload, secret)
-
-  if (!safeCompare(signature, expectedSignature)) {
-    return null
-  }
-
-  try {
-    const payload = JSON.parse(base64UrlDecode(encodedPayload))
-
-    if (!payload?.username || !payload?.expiresAt || payload.expiresAt < Date.now()) {
-      return null
-    }
-
-    return payload
-  } catch {
-    return null
-  }
+  const derivedKey = await scryptAsync(password, salt, 64)
+  return safeCompare(Buffer.from(derivedKey).toString('hex'), storedHash)
 }
 
 const isProduction = process.env.NODE_ENV === 'production'
+const sameSitePolicy = isProduction ? 'None' : 'Lax'
 
-const serializeSessionCookie = (username) => {
-  const { secret } = getAuthConfig()
-  const value = buildCookieValue(username, secret)
+const serializeSessionCookie = (token) => {
   const parts = [
-    `${SESSION_COOKIE_NAME}=${value}`,
+    `${SESSION_COOKIE_NAME}=${base64UrlEncode(token)}`,
     'Path=/',
     'HttpOnly',
-    'SameSite=Lax',
+    `SameSite=${sameSitePolicy}`,
     `Max-Age=${Math.floor(SESSION_DURATION_MS / 1000)}`,
   ]
 
@@ -108,29 +88,107 @@ const serializeSessionCookie = (username) => {
 }
 
 export const clearSessionCookie = () =>
-  `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${isProduction ? '; Secure' : ''}`
+  `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=${sameSitePolicy}; Max-Age=0${isProduction ? '; Secure' : ''}`
 
-export const authenticateUser = ({ username, password }) => {
-  const auth = getAuthConfig()
-  return safeCompare(username, auth.username) && safeCompare(password, auth.password)
+export const createSessionForUser = async (userId) => {
+  const AuthSession = getAuthSessionModel()
+  const token = crypto.randomBytes(48).toString('hex')
+
+  await AuthSession.create({
+    userId,
+    tokenHash: hashToken(token),
+    expiresAt: new Date(Date.now() + SESSION_DURATION_MS),
+    lastSeenAt: new Date(),
+  })
+
+  return serializeSessionCookie(token)
 }
 
-export const createSessionCookie = (username) => serializeSessionCookie(username)
+export const authenticateUser = async ({ username, password }) => {
+  const AuthUser = getAuthUserModel()
+  const user = await AuthUser.findOne({ username: String(username || '').trim() })
 
-export const readSession = (request) => {
-  const { secret } = getAuthConfig()
-  const cookieValue = getSessionCookie(request)
-
-  if (!cookieValue) {
+  if (!user) {
     return null
   }
 
-  return parseSessionCookie(cookieValue, secret)
+  const isValid = await verifyPasswordHash(password, user.passwordHash)
+
+  if (!isValid) {
+    return null
+  }
+
+  user.lastLoginAt = new Date()
+  await user.save()
+
+  return user
 }
 
-export const requireAuth = (request, response, next) => {
+export const readSession = async (request) => {
+  const AuthSession = getAuthSessionModel()
+  const AuthUser = getAuthUserModel()
+  const encodedToken = getSessionCookie(request)
+
+  if (!encodedToken) {
+    return null
+  }
+
+  let token = ''
+
   try {
-    const session = readSession(request)
+    token = base64UrlDecode(encodedToken)
+  } catch {
+    return null
+  }
+
+  const session = await AuthSession.findOne({
+    tokenHash: hashToken(token),
+    expiresAt: { $gt: new Date() },
+  }).lean()
+
+  if (!session) {
+    return null
+  }
+
+  const user = await AuthUser.findById(session.userId).lean()
+
+  if (!user) {
+    return null
+  }
+
+  await AuthSession.updateOne(
+    { _id: session._id },
+    {
+      $set: { lastSeenAt: new Date() },
+    },
+  )
+
+  return {
+    userId: user._id.toString(),
+    username: user.username,
+    role: user.role,
+  }
+}
+
+export const invalidateSession = async (request) => {
+  const AuthSession = getAuthSessionModel()
+  const encodedToken = getSessionCookie(request)
+
+  if (!encodedToken) {
+    return
+  }
+
+  try {
+    const token = base64UrlDecode(encodedToken)
+    await AuthSession.deleteOne({ tokenHash: hashToken(token) })
+  } catch {
+    return
+  }
+}
+
+export const requireAuth = async (request, response, next) => {
+  try {
+    const session = await readSession(request)
 
     if (!session) {
       response.status(401).json({ message: 'Autenticacao necessaria.' })
@@ -142,4 +200,30 @@ export const requireAuth = (request, response, next) => {
   } catch (error) {
     next(error)
   }
+}
+
+export const ensureSeedAdmin = async () => {
+  const seedUsername = String(process.env.AUTH_SEED_USERNAME || '').trim()
+  const seedPassword = String(process.env.AUTH_SEED_PASSWORD || '')
+
+  if (!seedUsername || !seedPassword) {
+    return
+  }
+
+  const AuthUser = getAuthUserModel()
+  const existingUser = await AuthUser.findOne({ username: seedUsername })
+  const passwordHash = await createPasswordHash(seedPassword)
+
+  if (!existingUser) {
+    await AuthUser.create({
+      username: seedUsername,
+      passwordHash,
+      role: 'admin',
+    })
+    return
+  }
+
+  existingUser.passwordHash = passwordHash
+  existingUser.role = 'admin'
+  await existingUser.save()
 }
