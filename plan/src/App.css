@@ -254,6 +254,38 @@
   white-space: pre-wrap;
 }
 
+.response-card.is-unread {
+  border-color: rgba(255, 177, 94, 0.4);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.26),
+    0 0 0 1px rgba(255, 177, 94, 0.16) inset;
+}
+
+.response-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.response-status {
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+}
+
+.response-status.is-unread {
+  background: rgba(255, 177, 94, 0.14);
+  color: #ffd4a2;
+}
+
+.response-status.is-read {
+  background: rgba(105, 210, 165, 0.14);
+  color: #abf1d0;
+}
+
 .workspace-hero,
 .dashboard-card {
   border: 1px solid rgba(191, 215, 255, 0.12);
@@ -414,6 +446,32 @@
 .card-tag.is-live {
   background: rgba(105, 210, 165, 0.14);
   color: #abf1d0;
+}
+
+.dock-icon-shell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dock-icon-badge {
+  position: absolute;
+  top: -9px;
+  right: -10px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ff7c54;
+  color: #fff8ef;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.22);
 }
 
 .card-stats {

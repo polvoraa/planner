@@ -62,6 +62,25 @@ export const getResponseSources = () => {
     )
   }
 
+  const tertiaryDbName = String(process.env.RESPONSES_TERTIARY_DB_NAME || '').trim()
+  const tertiaryCollectionName = String(
+    process.env.RESPONSES_TERTIARY_COLLECTION_NAME || 'responses',
+  ).trim() || 'responses'
+  const tertiaryFallbackSource = String(
+    process.env.RESPONSES_TERTIARY_FALLBACK_SOURCE || tertiaryDbName,
+  ).trim()
+
+  if (tertiaryDbName) {
+    sources.push(
+      buildResponseSourceConfig({
+        key: 'tertiary',
+        dbName: tertiaryDbName,
+        collectionName: tertiaryCollectionName,
+        fallbackSource: tertiaryFallbackSource,
+      }),
+    )
+  }
+
   return sources
 }
 

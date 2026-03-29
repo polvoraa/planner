@@ -20,7 +20,7 @@ import {
   removeTaskFromDay,
   updateTaskState,
 } from './services/plannerService.js'
-import { listResponses } from './services/responseService.js'
+import { listResponses, markResponsesAsRead } from './services/responseService.js'
 
 const app = express()
 const port = Number(process.env.PORT || 4000)
@@ -122,6 +122,17 @@ app.get('/api/responses', requireAuth, async (request, response, next) => {
       search: request.query.search,
       limit: request.query.limit,
     })
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/responses/read', requireAuth, async (request, response, next) => {
+  try {
+    const ids = Array.isArray(request.body?.ids) ? request.body.ids : []
+    const read = typeof request.body?.read === 'boolean' ? request.body.read : true
+    const data = await markResponsesAsRead({ ids, read })
     response.json(data)
   } catch (error) {
     next(error)

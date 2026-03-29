@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { fetchResponses, logout } from '../../lib/plannerApi'
+import { fetchResponses, logout, markResponsesRead } from '../../lib/plannerApi'
 
 const formatDate = (value) => {
   if (!value) {
@@ -18,13 +18,14 @@ const formatDate = (value) => {
   }).format(date)
 }
 
-function ResponsesHub({ onBack, user, onLogout }) {
+function ResponsesHub({ onBack, user, onLogout, onSummaryChange }) {
   const [responses, setResponses] = useState([])
-  const [summary, setSummary] = useState({ total: 0, bySource: {} })
+  const [summary, setSummary] = useState({ total: 0, unreadTotal: 0, bySource: {}, unreadBySource: {} })
   const [sourceFilter, setSourceFilter] = useState('')
   const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
+  const [pendingReadIds, setPendingReadIds] = useState([])
 
   useEffect(() => {
     const loadResponses = async () => {
@@ -38,10 +39,19 @@ function ResponsesHub({ onBack, user, onLogout }) {
         })
 
         setResponses(payload.items || [])
-        setSummary(payload.summary || { total: 0, bySource: {} })
+        const nextSummary = payload.summary || {
+          total: 0,
+          unreadTotal: 0,
+          bySource: {},
+          unreadBySource: {},
+        }
+        setSummary(nextSummary)
+        onSummaryChange?.(nextSummary)
       } catch (error) {
         setResponses([])
-        setSummary({ total: 0, bySource: {} })
+        const emptySummary = { total: 0, unreadTotal: 0, bySource: {}, unreadBySource: {} }
+        setSummary(emptySummary)
+        onSummaryChange?.(emptySummary)
         setErrorMessage(error.message)
       } finally {
         setIsLoading(false)
@@ -66,6 +76,41 @@ function ResponsesHub({ onBack, user, onLogout }) {
       await logout()
     } finally {
       onLogout()
+    }
+  }
+
+  const handleMarkAsRead = async (id) => {
+    const target = responses.find((item) => item.id === id)
+    setPendingReadIds((current) => [...current, id])
+
+    try {
+      await markResponsesRead({ ids: [id], read: true })
+      setResponses((current) =>
+        current.map((item) =>
+          item.id === id ? { ...item, isRead: true, readAt: new Date().toISOString() } : item,
+        ),
+      )
+      setSummary((current) => {
+        if (!target || target.isRead) {
+          return current
+        }
+
+        const nextSummary = {
+          ...current,
+          unreadTotal: Math.max((current.unreadTotal || 0) - 1, 0),
+          unreadBySource: {
+            ...(current.unreadBySource || {}),
+            [target.source]: Math.max(((current.unreadBySource || {})[target.source] || 0) - 1, 0),
+          },
+        }
+
+        onSummaryChange?.(nextSummary)
+        return nextSummary
+      })
+    } catch (error) {
+      setErrorMessage(error.message)
+    } finally {
+      setPendingReadIds((current) => current.filter((item) => item !== id))
     }
   }
 
@@ -96,6 +141,10 @@ function ResponsesHub({ onBack, user, onLogout }) {
           <article className="responses-metric-card">
             <span>Total carregado</span>
             <strong>{summary.total}</strong>
+          </article>
+          <article className="responses-metric-card">
+            <span>Nao lidas</span>
+            <strong>{summary.unreadTotal || 0}</strong>
           </article>
           <article className="responses-metric-card">
             <span>Origens</span>
@@ -154,7 +203,10 @@ function ResponsesHub({ onBack, user, onLogout }) {
         {!isLoading && responses.length ? (
           <section className="responses-list">
             {responses.map((item) => (
-              <article key={item.id} className="response-card">
+              <article
+                key={item.id}
+                className={`response-card ${item.isRead ? '' : 'is-unread'}`.trim()}
+              >
                 <div className="response-card-head">
                   <div>
                     <span className="card-kicker">{item.source}</span>
@@ -169,6 +221,22 @@ function ResponsesHub({ onBack, user, onLogout }) {
                 </div>
 
                 <p>{item.message || 'Mensagem vazia.'}</p>
+
+                <div className="response-actions">
+                  <span className={`response-status ${item.isRead ? 'is-read' : 'is-unread'}`}>
+                    {item.isRead ? 'Lida' : 'Nao lida'}
+                  </span>
+                  {!item.isRead ? (
+                    <button
+                      type="button"
+                      className="card-action"
+                      onClick={() => handleMarkAsRead(item.id)}
+                      disabled={pendingReadIds.includes(item.id)}
+                    >
+                      {pendingReadIds.includes(item.id) ? 'Salvando...' : 'Marcar como lida'}
+                    </button>
+                  ) : null}
+                </div>
               </article>
             ))}
           </section>

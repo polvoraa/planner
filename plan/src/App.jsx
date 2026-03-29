@@ -55,7 +55,12 @@ const getViewFromHash = (hash) => {
 function App() {
   const [activeView, setActiveView] = useState(() => getViewFromHash(window.location.hash))
   const [plannerDays, setPlannerDays] = useState([])
-  const [responsesSummary, setResponsesSummary] = useState({ total: 0, bySource: {} })
+  const [responsesSummary, setResponsesSummary] = useState({
+    total: 0,
+    unreadTotal: 0,
+    bySource: {},
+    unreadBySource: {},
+  })
   const [authState, setAuthState] = useState({
     checked: false,
     authenticated: false,
@@ -109,15 +114,17 @@ function App() {
   useEffect(() => {
     const loadResponsesPreview = async () => {
       if (!authState.authenticated) {
-        setResponsesSummary({ total: 0, bySource: {} })
+        setResponsesSummary({ total: 0, unreadTotal: 0, bySource: {}, unreadBySource: {} })
         return
       }
 
       try {
-        const payload = await fetchResponses({ limit: 20 })
-        setResponsesSummary(payload.summary || { total: 0, bySource: {} })
+        const payload = await fetchResponses({ limit: 200 })
+        setResponsesSummary(
+          payload.summary || { total: 0, unreadTotal: 0, bySource: {}, unreadBySource: {} },
+        )
       } catch {
-        setResponsesSummary({ total: 0, bySource: {} })
+        setResponsesSummary({ total: 0, unreadTotal: 0, bySource: {}, unreadBySource: {} })
       }
     }
 
@@ -157,9 +164,16 @@ function App() {
     },
     {
       key: 'messages',
-      label: 'Mensagens',
+      label: responsesSummary.unreadTotal ? `Mensagens (${responsesSummary.unreadTotal})` : 'Mensagens',
       isActive: activeView === 'messages',
-      icon: <WorkspaceIcon path={iconPaths.messages} active={activeView === 'messages'} />,
+      icon: (
+        <div className="dock-icon-shell">
+          <WorkspaceIcon path={iconPaths.messages} active={activeView === 'messages'} />
+          {responsesSummary.unreadTotal ? (
+            <span className="dock-icon-badge">{responsesSummary.unreadTotal > 99 ? '99+' : responsesSummary.unreadTotal}</span>
+          ) : null}
+        </div>
+      ),
       onClick: () => navigateTo('messages'),
     },
     {
@@ -195,13 +209,15 @@ function App() {
           <ResponsesHub
             onBack={openHome}
             user={authState.user}
-            onLogout={() =>
+            onSummaryChange={setResponsesSummary}
+            onLogout={() => {
+              setResponsesSummary({ total: 0, unreadTotal: 0, bySource: {}, unreadBySource: {} })
               setAuthState({
                 checked: true,
                 authenticated: false,
                 user: null,
               })
-            }
+            }}
           />
         ) : (
           <LoginGate
@@ -319,7 +335,9 @@ function App() {
             </p>
             <div className="card-stats">
               <span>
-                {authState.authenticated ? `${responsesSummary.total} respostas visiveis` : 'Acesso protegido'}
+                {authState.authenticated
+                  ? `${responsesSummary.unreadTotal || 0} nao lidas`
+                  : 'Acesso protegido'}
               </span>
               <span>
                 {authState.authenticated
