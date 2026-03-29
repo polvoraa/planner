@@ -55,6 +55,8 @@ const attachReadState = (items, stateMap) =>
     ...item,
     isRead: Boolean(stateMap[item.id]?.readAt),
     readAt: stateMap[item.id]?.readAt || null,
+    whatsappNotifiedAt: stateMap[item.id]?.whatsappNotifiedAt || null,
+    lastWhatsAppError: stateMap[item.id]?.lastWhatsAppError || '',
   }))
 
 const notifyUnreadViaWhatsApp = async (items, stateMap) => {

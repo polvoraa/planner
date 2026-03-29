@@ -28,6 +28,10 @@ function ResponsesHub({ onBack, user, onLogout, onSummaryChange }) {
   const [pendingReadIds, setPendingReadIds] = useState([])
 
   useEffect(() => {
+    onSummaryChange?.(summary)
+  }, [onSummaryChange, summary])
+
+  useEffect(() => {
     const loadResponses = async () => {
       setIsLoading(true)
       setErrorMessage('')
@@ -46,12 +50,10 @@ function ResponsesHub({ onBack, user, onLogout, onSummaryChange }) {
           unreadBySource: {},
         }
         setSummary(nextSummary)
-        onSummaryChange?.(nextSummary)
       } catch (error) {
         setResponses([])
         const emptySummary = { total: 0, unreadTotal: 0, bySource: {}, unreadBySource: {} }
         setSummary(emptySummary)
-        onSummaryChange?.(emptySummary)
         setErrorMessage(error.message)
       } finally {
         setIsLoading(false)
@@ -90,23 +92,16 @@ function ResponsesHub({ onBack, user, onLogout, onSummaryChange }) {
           item.id === id ? { ...item, isRead: true, readAt: new Date().toISOString() } : item,
         ),
       )
-      setSummary((current) => {
-        if (!target || target.isRead) {
-          return current
-        }
-
-        const nextSummary = {
+      if (target && !target.isRead) {
+        setSummary((current) => ({
           ...current,
           unreadTotal: Math.max((current.unreadTotal || 0) - 1, 0),
           unreadBySource: {
             ...(current.unreadBySource || {}),
             [target.source]: Math.max(((current.unreadBySource || {})[target.source] || 0) - 1, 0),
           },
-        }
-
-        onSummaryChange?.(nextSummary)
-        return nextSummary
-      })
+        }))
+      }
     } catch (error) {
       setErrorMessage(error.message)
     } finally {
@@ -221,6 +216,12 @@ function ResponsesHub({ onBack, user, onLogout, onSummaryChange }) {
                 </div>
 
                 <p>{item.message || 'Mensagem vazia.'}</p>
+
+                {item.lastWhatsAppError ? (
+                  <div className="feedback-banner" role="status">
+                    Falha no WhatsApp: {item.lastWhatsAppError}
+                  </div>
+                ) : null}
 
                 <div className="response-actions">
                   <span className={`response-status ${item.isRead ? 'is-read' : 'is-unread'}`}>
