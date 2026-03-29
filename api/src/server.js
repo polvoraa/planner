@@ -20,7 +20,11 @@ import {
   removeTaskFromDay,
   updateTaskState,
 } from './services/plannerService.js'
-import { listResponses, markResponsesAsRead } from './services/responseService.js'
+import {
+  listResponses,
+  markResponsesAsRead,
+  processUnreadResponseNotifications,
+} from './services/responseService.js'
 
 const app = express()
 const port = Number(process.env.PORT || 4000)
@@ -138,6 +142,32 @@ app.post('/api/responses/read', requireAuth, async (request, response, next) => 
     next(error)
   }
 })
+
+const handleResponseNotifications = async (request, response, next) => {
+  const expectedSecret = String(process.env.INTERNAL_CRON_SECRET || '').trim()
+  const providedSecret = String(
+    request.headers['x-cron-secret'] || request.query.secret || request.body?.secret || '',
+  ).trim()
+
+  if (!expectedSecret || providedSecret !== expectedSecret) {
+    response.status(401).json({ message: 'Nao autorizado.' })
+    return
+  }
+
+  try {
+    const data = await processUnreadResponseNotifications({
+      source: request.body?.source || request.query.source,
+      search: request.body?.search || request.query.search,
+      limit: request.body?.limit || request.query.limit || 200,
+    })
+    response.json({ ok: true, ...data })
+  } catch (error) {
+    next(error)
+  }
+}
+
+app.get('/api/responses/notify', handleResponseNotifications)
+app.post('/api/responses/notify', handleResponseNotifications)
 
 app.post('/api/days', async (request, response, next) => {
   try {

@@ -106,6 +106,54 @@ const notifyUnreadViaWhatsApp = async (items, stateMap) => {
   }
 }
 
+const fetchResponseItems = async ({ source, search, limit }) => {
+  const normalizedLimit = Math.min(Math.max(Number(limit) || 50, 1), 200)
+  const normalizedSource = String(source || '').trim()
+  const normalizedSearch = String(search || '').trim()
+  const query = buildSearchQuery(normalizedSearch)
+
+  const responsesBySource = await Promise.all(
+    getResponseSources().map(async (sourceConfig) => {
+      const FormResponse = getFormResponseModel(sourceConfig)
+      const responses = await FormResponse.find(query)
+        .sort({ createdAt: -1 })
+        .limit(normalizedLimit)
+        .lean()
+
+      return responses.map((response) => formatResponse(response, sourceConfig))
+    }),
+  )
+
+  const items = responsesBySource
+    .flat()
+    .filter((item) => !normalizedSource || item.source === normalizedSource)
+    .sort((first, second) => {
+      const firstDate = first.createdAt ? new Date(first.createdAt).getTime() : 0
+      const secondDate = second.createdAt ? new Date(second.createdAt).getTime() : 0
+      return secondDate - firstDate
+    })
+    .slice(0, normalizedLimit)
+
+  const stateMap = await buildStateMap(items)
+
+  return {
+    items: attachReadState(items, stateMap),
+    stateMap,
+  }
+}
+
+export const processUnreadResponseNotifications = async ({ source, search, limit } = {}) => {
+  const { items, stateMap } = await fetchResponseItems({ source, search, limit })
+  const unreadItems = items.filter((item) => !item.isRead)
+
+  await notifyUnreadViaWhatsApp(unreadItems, stateMap)
+
+  return {
+    scanned: items.length,
+    unread: unreadItems.length,
+  }
+}
+
 export const markResponsesAsRead = async ({ ids, read = true }) => {
   const normalizedIds = [...new Set((Array.isArray(ids) ? ids : []).map((item) => String(item).trim()))]
     .filter(Boolean)
@@ -144,35 +192,7 @@ export const markResponsesAsRead = async ({ ids, read = true }) => {
 }
 
 export const listResponses = async ({ source, search, limit }) => {
-  const normalizedLimit = Math.min(Math.max(Number(limit) || 50, 1), 200)
-  const normalizedSource = String(source || '').trim()
-  const normalizedSearch = String(search || '').trim()
-  const query = buildSearchQuery(normalizedSearch)
-
-  const responsesBySource = await Promise.all(
-    getResponseSources().map(async (sourceConfig) => {
-      const FormResponse = getFormResponseModel(sourceConfig)
-      const responses = await FormResponse.find(query)
-        .sort({ createdAt: -1 })
-        .limit(normalizedLimit)
-        .lean()
-
-      return responses.map((response) => formatResponse(response, sourceConfig))
-    }),
-  )
-
-  const items = responsesBySource
-    .flat()
-    .filter((item) => !normalizedSource || item.source === normalizedSource)
-    .sort((first, second) => {
-      const firstDate = first.createdAt ? new Date(first.createdAt).getTime() : 0
-      const secondDate = second.createdAt ? new Date(second.createdAt).getTime() : 0
-      return secondDate - firstDate
-    })
-    .slice(0, normalizedLimit)
-
-  const stateMap = await buildStateMap(items)
-  const itemsWithState = attachReadState(items, stateMap)
+  const { items: itemsWithState, stateMap } = await fetchResponseItems({ source, search, limit })
 
   await notifyUnreadViaWhatsApp(
     itemsWithState.filter((item) => !item.isRead),
