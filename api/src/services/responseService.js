@@ -2,6 +2,11 @@ import { getFormResponseModel, getResponseSources } from '../models/FormResponse
 import { getResponseStateModel } from '../models/ResponseState.js'
 import { sendWhatsAppNotification } from './notificationService.js'
 
+const WHATSAPP_RETRY_COOLDOWN_MS = Math.max(
+  Number(process.env.WHATSAPP_RETRY_COOLDOWN_MS) || 1000 * 60 * 15,
+  0,
+)
+
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 const buildSearchQuery = (search) => {
@@ -55,9 +60,28 @@ const attachReadState = (items, stateMap) =>
     ...item,
     isRead: Boolean(stateMap[item.id]?.readAt),
     readAt: stateMap[item.id]?.readAt || null,
+    lastWhatsAppAttemptAt: stateMap[item.id]?.lastWhatsAppAttemptAt || null,
     whatsappNotifiedAt: stateMap[item.id]?.whatsappNotifiedAt || null,
     lastWhatsAppError: stateMap[item.id]?.lastWhatsAppError || '',
   }))
+
+const shouldAttemptWhatsAppNotification = (state) => {
+  if (state?.whatsappNotifiedAt) {
+    return false
+  }
+
+  if (!state?.lastWhatsAppAttemptAt) {
+    return true
+  }
+
+  const lastAttemptTime = new Date(state.lastWhatsAppAttemptAt).getTime()
+
+  if (Number.isNaN(lastAttemptTime)) {
+    return true
+  }
+
+  return Date.now() - lastAttemptTime >= WHATSAPP_RETRY_COOLDOWN_MS
+}
 
 const notifyUnreadViaWhatsApp = async (items, stateMap) => {
   const ResponseState = getResponseStateModel()
@@ -65,7 +89,7 @@ const notifyUnreadViaWhatsApp = async (items, stateMap) => {
   for (const item of items) {
     const state = stateMap[item.id]
 
-    if (state?.whatsappNotifiedAt) {
+    if (!shouldAttemptWhatsAppNotification(state)) {
       continue
     }
 
@@ -83,6 +107,7 @@ const notifyUnreadViaWhatsApp = async (items, stateMap) => {
             responseKey: item.id,
             source: item.source,
             externalId: item.externalId,
+            lastWhatsAppAttemptAt: new Date(),
             whatsappNotifiedAt: new Date(),
             lastWhatsAppError: '',
           },
@@ -97,6 +122,7 @@ const notifyUnreadViaWhatsApp = async (items, stateMap) => {
             responseKey: item.id,
             source: item.source,
             externalId: item.externalId,
+            lastWhatsAppAttemptAt: new Date(),
             lastWhatsAppError: error.message,
           },
         },
@@ -192,12 +218,7 @@ export const markResponsesAsRead = async ({ ids, read = true }) => {
 }
 
 export const listResponses = async ({ source, search, limit }) => {
-  const { items: itemsWithState, stateMap } = await fetchResponseItems({ source, search, limit })
-
-  await notifyUnreadViaWhatsApp(
-    itemsWithState.filter((item) => !item.isRead),
-    stateMap,
-  )
+  const { items: itemsWithState } = await fetchResponseItems({ source, search, limit })
 
   const summary = {
     total: itemsWithState.length,

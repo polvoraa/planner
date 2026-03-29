@@ -6,6 +6,7 @@ const responseStateSchema = new mongoose.Schema(
     source: { type: String, default: '', index: true },
     externalId: { type: String, default: '' },
     readAt: { type: Date, default: null },
+    lastWhatsAppAttemptAt: { type: Date, default: null },
     whatsappNotifiedAt: { type: Date, default: null },
     lastWhatsAppError: { type: String, default: '' },
   },
