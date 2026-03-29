@@ -4,6 +4,7 @@ import cors from 'cors'
 import mongoose from 'mongoose'
 import {
   authenticateUser,
+  createApiTokenForUser,
   clearSessionCookie,
   createSessionForUser,
   ensureSeedAdmin,
@@ -91,6 +92,34 @@ app.post('/api/auth/login', async (request, response, next) => {
     response.setHeader('Set-Cookie', await createSessionForUser(user._id.toString()))
     response.json({
       authenticated: true,
+      user: { id: user._id.toString(), username: user.username, role: user.role },
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/mobile/auth/login', async (request, response, next) => {
+  const username = String(request.body?.username || '').trim()
+  const password = String(request.body?.password || '')
+
+  if (!username || !password) {
+    response.status(400).json({ message: 'Usuario e senha sao obrigatorios.' })
+    return
+  }
+
+  try {
+    const user = await authenticateUser({ username, password })
+
+    if (!user) {
+      response.status(401).json({ message: 'Credenciais invalidas.' })
+      return
+    }
+
+    const token = await createApiTokenForUser(user._id.toString())
+    response.json({
+      authenticated: true,
+      token,
       user: { id: user._id.toString(), username: user.username, role: user.role },
     })
   } catch (error) {

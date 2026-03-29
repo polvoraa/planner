@@ -39,6 +39,15 @@ const parseCookies = (cookieHeader = '') =>
     }, {})
 
 const getSessionCookie = (request) => parseCookies(request.headers.cookie)[SESSION_COOKIE_NAME] || ''
+const getBearerToken = (request) => {
+  const authorization = String(request.headers.authorization || '').trim()
+
+  if (!authorization.toLowerCase().startsWith('bearer ')) {
+    return ''
+  }
+
+  return authorization.slice(7).trim()
+}
 
 const safeCompare = (left, right) => {
   const leftBuffer = Buffer.from(String(left))
@@ -104,6 +113,20 @@ export const createSessionForUser = async (userId) => {
   return serializeSessionCookie(token)
 }
 
+export const createApiTokenForUser = async (userId) => {
+  const AuthSession = getAuthSessionModel()
+  const token = crypto.randomBytes(48).toString('hex')
+
+  await AuthSession.create({
+    userId,
+    tokenHash: hashToken(token),
+    expiresAt: new Date(Date.now() + SESSION_DURATION_MS),
+    lastSeenAt: new Date(),
+  })
+
+  return token
+}
+
 export const authenticateUser = async ({ username, password }) => {
   const AuthUser = getAuthUserModel()
   const user = await AuthUser.findOne({ username: String(username || '').trim() })
@@ -128,17 +151,22 @@ export const readSession = async (request) => {
   const AuthSession = getAuthSessionModel()
   const AuthUser = getAuthUserModel()
   const encodedToken = getSessionCookie(request)
+  const bearerToken = getBearerToken(request)
 
-  if (!encodedToken) {
+  if (!encodedToken && !bearerToken) {
     return null
   }
 
   let token = ''
 
-  try {
-    token = base64UrlDecode(encodedToken)
-  } catch {
-    return null
+  if (bearerToken) {
+    token = bearerToken
+  } else {
+    try {
+      token = base64UrlDecode(encodedToken)
+    } catch {
+      return null
+    }
   }
 
   const session = await AuthSession.findOne({
@@ -173,13 +201,14 @@ export const readSession = async (request) => {
 export const invalidateSession = async (request) => {
   const AuthSession = getAuthSessionModel()
   const encodedToken = getSessionCookie(request)
+  const bearerToken = getBearerToken(request)
 
-  if (!encodedToken) {
+  if (!encodedToken && !bearerToken) {
     return
   }
 
   try {
-    const token = base64UrlDecode(encodedToken)
+    const token = bearerToken || base64UrlDecode(encodedToken)
     await AuthSession.deleteOne({ tokenHash: hashToken(token) })
   } catch {
     return
