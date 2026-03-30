@@ -26,6 +26,7 @@ import {
   markResponsesAsRead,
   processUnreadResponseNotifications,
 } from './services/responseService.js'
+import { listProjects } from './services/projectService.js'
 
 const app = express()
 const port = Number(process.env.PORT || 4000)
@@ -155,6 +156,15 @@ app.get('/api/responses', requireAuth, async (request, response, next) => {
       search: request.query.search,
       limit: request.query.limit,
     })
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.get('/api/projects', requireAuth, async (_request, response, next) => {
+  try {
+    const data = await listProjects()
     response.json(data)
   } catch (error) {
     next(error)

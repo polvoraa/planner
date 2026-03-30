@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import { login } from '../../lib/plannerApi'
 
-function LoginGate({ onAuthenticated }) {
+function LoginGate({
+  onAuthenticated,
+  eyebrow = 'Acesso restrito',
+  title = 'Entre para abrir o hub de respostas.',
+  description = 'Essa area agora exige autenticacao antes de carregar as mensagens vindas dos formularios.',
+}) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
@@ -25,11 +30,9 @@ function LoginGate({ onAuthenticated }) {
   return (
     <section className="login-gate">
       <div className="login-copy">
-        <span className="hero-kicker">Acesso restrito</span>
-        <h1>Entre para abrir o hub de respostas.</h1>
-        <p>
-          Essa area agora exige autenticacao antes de carregar as mensagens vindas dos formularios.
-        </p>
+        <span className="hero-kicker">{eyebrow}</span>
+        <h1>{title}</h1>
+        <p>{description}</p>
       </div>
 
       <form className="login-card" onSubmit={handleSubmit}>

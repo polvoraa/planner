@@ -115,10 +115,21 @@
   color: #eef4ff;
 }
 
+.projects-page {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 24px;
+  color: #eef4ff;
+}
+
 .responses-sidebar,
+.projects-sidebar,
 .responses-toolbar,
 .responses-empty-state,
-.response-card {
+.response-card,
+.project-card {
   border: 1px solid rgba(191, 215, 255, 0.12);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
 }
@@ -134,16 +145,31 @@
     linear-gradient(135deg, rgba(20, 29, 43, 0.98), rgba(13, 19, 29, 0.98));
 }
 
+.projects-sidebar {
+  display: grid;
+  align-content: start;
+  gap: 20px;
+  padding: 24px;
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 177, 94, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(20, 29, 43, 0.98), rgba(13, 19, 29, 0.98));
+}
+
 .responses-sidebar-copy h1,
+.projects-sidebar-copy h1,
 .responses-empty-state h2,
-.response-card h2 {
+.response-card h2,
+.project-card h2 {
   margin: 12px 0 0;
 }
 
 .responses-sidebar-copy p,
+.projects-sidebar-copy p,
 .responses-empty-state p,
 .response-card p,
-.response-meta {
+.response-meta,
+.project-list-item p {
   color: rgba(225, 235, 255, 0.72);
   line-height: 1.65;
 }
@@ -188,6 +214,11 @@
 }
 
 .responses-content {
+  display: grid;
+  gap: 18px;
+}
+
+.projects-content {
   display: grid;
   gap: 18px;
 }
@@ -240,6 +271,14 @@
     linear-gradient(180deg, rgba(18, 25, 37, 0.98), rgba(13, 18, 27, 0.99));
 }
 
+.project-card {
+  padding: 24px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at bottom right, rgba(255, 170, 98, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(18, 25, 37, 0.98), rgba(13, 18, 27, 0.99));
+}
+
 .response-card-head,
 .response-meta {
   display: flex;
@@ -259,6 +298,31 @@
   box-shadow:
     0 24px 60px rgba(0, 0, 0, 0.26),
     0 0 0 1px rgba(255, 177, 94, 0.16) inset;
+}
+
+.project-list {
+  display: grid;
+  gap: 12px;
+}
+
+.project-list-item {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(191, 215, 255, 0.08);
+}
+
+.project-list-bullet {
+  color: #ffb15e;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+.project-list-item p {
+  margin: 0;
 }
 
 .response-actions {
@@ -538,6 +602,7 @@
 @media (max-width: 1080px) {
   .login-gate,
   .responses-page,
+  .projects-page,
   .workspace-hero,
   .overview-grid,
   .secondary-grid {
@@ -560,9 +625,11 @@
   .login-copy,
   .login-card,
   .responses-sidebar,
+  .projects-sidebar,
   .responses-toolbar,
   .responses-empty-state,
-  .response-card {
+  .response-card,
+  .project-card {
     padding: 20px;
     border-radius: 24px;
   }

@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
+import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
 
 import { fetchDays } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -15,6 +16,38 @@ const fallbackChartDays = [
   { label: 'Qui', done: 3, total: 4 },
   { label: 'Sex', done: 5, total: 6 },
 ];
+
+function CardGlow({
+  color,
+  focalX = '50%',
+  focalY = '50%',
+  height,
+  opacity = 1,
+  width,
+}: {
+  color: string;
+  focalX?: string;
+  focalY?: string;
+  height: number;
+  opacity?: number;
+  width: number;
+}) {
+  const gradientId = `card-glow-${color.replace(/[^a-z0-9]/gi, '')}-${width}-${height}`;
+
+  return (
+    <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} opacity={opacity}>
+      <Defs>
+        <RadialGradient id={gradientId} cx="50%" cy="50%" rx="50%" ry="50%" fx={focalX} fy={focalY}>
+          <Stop offset="0%" stopColor={color} stopOpacity="0.7" />
+          <Stop offset="35%" stopColor={color} stopOpacity="0.34" />
+          <Stop offset="68%" stopColor={color} stopOpacity="0.12" />
+          <Stop offset="100%" stopColor={color} stopOpacity="0" />
+        </RadialGradient>
+      </Defs>
+      <Ellipse cx={width / 2} cy={height / 2} rx={width / 2} ry={height / 2} fill={`url(#${gradientId})`} />
+    </Svg>
+  );
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -51,89 +84,98 @@ export default function HomeScreen() {
   );
   const completionRate = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
   const chartDays = plannerDays.slice(0, 5);
+  const nextPending = Math.max(totalTasks - completedTasks, 0);
+  const sourceCount = Object.keys(responsesSummary.bySource || {}).length;
 
   return (
     <Screen>
-      <View style={styles.hero}>
+      <Card style={styles.hero}>
+        <View pointerEvents="none" style={styles.heroGlow}>
+          <CardGlow color="#D85C00" focalX="74%" focalY="22%" height={420} opacity={0.58} width={420} />
+        </View>
         <View style={styles.heroCopy}>
           <Text style={styles.kicker}>Workspace central</Text>
-          <Text style={styles.title}>Um painel unico para operacao, rotina e acompanhamento.</Text>
+          <Text style={styles.title}>Operacao, rotina e mensagens em um painel mais proximo do web.</Text>
           <Text style={styles.description}>
-            O planner agora vira uma aba dentro de um dashboard principal. As outras areas ja ficam
-            desenhadas como proximas entregas para voce expandir depois.
+            A home agora prioriza leitura rapida no mobile, com atalhos claros, status do planner e
+            visao resumida do hub.
           </Text>
           <View style={styles.actions}>
             <Pressable
-              style={[styles.button, styles.primaryButton]}
+              style={[styles.button, styles.primaryButton, styles.actionPrimary]}
               onPress={() => router.push('/(tabs)/planner')}>
               <Text style={styles.primaryButtonLabel}>Abrir planner</Text>
             </Pressable>
-            <Pressable style={styles.button}>
-              <Text style={styles.buttonLabel}>Personalizar dashboard</Text>
+            <Pressable
+              style={[styles.button, styles.secondaryButton]}
+              onPress={() => router.push('/(tabs)/messages')}>
+              <Text style={styles.buttonLabel}>Ver mensagens</Text>
             </Pressable>
           </View>
         </View>
 
-        <View style={styles.metrics}>
-          <Card>
+        <View style={styles.heroPanel}>
+          <View style={styles.heroMetric}>
             <Text style={styles.metricLabel}>Execucao atual</Text>
             <Text style={styles.metricValue}>{completionRate}%</Text>
-          </Card>
-          <Card>
-            <Text style={styles.metricLabel}>Tarefas concluidas</Text>
-            <Text style={styles.metricValue}>{completedTasks}</Text>
-          </Card>
-          <Card>
-            <Text style={styles.metricLabel}>Total monitorado</Text>
-            <Text style={styles.metricValue}>{totalTasks}</Text>
-          </Card>
+          </View>
+          <View style={styles.heroMetric}>
+            <Text style={styles.metricLabel}>Pendencias</Text>
+            <Text style={styles.metricValue}>{nextPending}</Text>
+          </View>
+          <View style={styles.heroMetric}>
+            <Text style={styles.metricLabel}>Mensagens novas</Text>
+            <Text style={styles.metricValue}>{authState.authenticated ? unreadCount : 0}</Text>
+          </View>
         </View>
+      </Card>
+
+      <View style={styles.quickGrid}>
+        <Card style={[styles.quickCard, styles.featuredCard]}>
+          <Text style={styles.kicker}>Planner</Text>
+          <Text style={styles.cardTitle}>Rotina diaria</Text>
+          <Text style={styles.cardDescription}>
+            {plannerDays.length
+              ? `${plannerDays.length} dias carregados, ${nextPending} tarefas pendentes e foco no que falta concluir.`
+              : 'Crie o dia de hoje e comece a organizar tarefas com menos friccao.'}
+          </Text>
+          <View style={styles.inlineStats}>
+            <Text style={styles.pill}>{plannerDays.length} dias</Text>
+            <Text style={styles.pill}>{completedTasks} concluidas</Text>
+          </View>
+          <Pressable
+            style={[styles.button, styles.primaryButton]}
+            onPress={() => router.push('/(tabs)/planner')}>
+            <Text style={styles.primaryButtonLabel}>Entrar</Text>
+          </Pressable>
+        </Card>
+
+        <Card style={styles.quickCard}>
+          <Text style={styles.kicker}>Mensagens</Text>
+          <Text style={styles.cardTitle}>Hub centralizado</Text>
+          <Text style={styles.cardDescription}>
+            {authState.authenticated
+              ? `${unreadCount} nao lidas em ${sourceCount} origens conectadas.`
+              : 'Protegido por login. Entre para ver respostas dos formularios.'}
+          </Text>
+          <View style={styles.inlineStats}>
+            <Text style={styles.pill}>{authState.authenticated ? 'Sessao ativa' : 'Acesso restrito'}</Text>
+            <Text style={styles.pill}>{authState.authenticated ? `${sourceCount} origens` : 'Login necessario'}</Text>
+          </View>
+          <Pressable
+            style={[styles.button, styles.primaryButton]}
+            onPress={() => router.push('/(tabs)/messages')}>
+            <Text style={styles.primaryButtonLabel}>Entrar</Text>
+          </Pressable>
+        </Card>
       </View>
 
-      <Card style={styles.featuredCard}>
-        <Text style={styles.kicker}>Planner</Text>
-        <Text style={styles.cardTitle}>Tarefas por dia</Text>
-        <Text style={styles.cardDescription}>
-          Controle diario com notas por data, criacao automatica da nota de hoje e remocao de dias.
-        </Text>
-        <View style={styles.cardStats}>
-          <Text style={styles.statText}>{plannerDays.length} dias carregados</Text>
-          <Text style={styles.statText}>{Math.max(totalTasks - completedTasks, 0)} pendentes</Text>
-        </View>
-        <Pressable
-          style={[styles.button, styles.primaryButton]}
-          onPress={() => router.push('/(tabs)/planner')}>
-          <Text style={styles.primaryButtonLabel}>Entrar</Text>
-        </Pressable>
-      </Card>
-
-      <Card>
-        <Text style={styles.kicker}>Mensagens</Text>
-        <Text style={styles.cardTitle}>Hub de respostas</Text>
-        <Text style={styles.cardDescription}>
-          Central para respostas de formularios dos seus sites, com filtros por origem, prioridade e
-          status de atendimento.
-        </Text>
-        <View style={styles.cardStats}>
-          <Text style={styles.statText}>
-            {authState.authenticated ? `${unreadCount} nao lidas` : 'Acesso protegido'}
-          </Text>
-          <Text style={styles.statText}>
-            {authState.authenticated
-              ? `${Object.keys(responsesSummary.bySource || {}).length} origens`
-              : 'Login necessario'}
-          </Text>
-        </View>
-        <Pressable
-          style={[styles.button, styles.primaryButton]}
-          onPress={() => router.push('/(tabs)/messages')}>
-          <Text style={styles.primaryButtonLabel}>Entrar</Text>
-        </Pressable>
-      </Card>
-
-      <Card>
+      <Card style={styles.productivityCard}>
         <Text style={styles.kicker}>Produtividade</Text>
         <Text style={styles.cardTitle}>Ritmo de execucao</Text>
+        <Text style={styles.cardDescription}>
+          Uma leitura compacta da semana, com a mesma ideia visual do dashboard web mas ajustada para tela menor.
+        </Text>
         <View style={styles.chart}>
           {(chartDays.length ? chartDays : fallbackChartDays).map((day, index) => {
             const total = day.tasks?.length || day.total || 0;
@@ -143,6 +185,9 @@ export default function HomeScreen() {
             return (
               <View key={`${day.id || day.label}-${index}`} style={styles.chartColumn}>
                 <View style={styles.chartTrack}>
+                  <View style={[styles.chartBarGlow, { height: `${Math.min(height + 14, 100)}%` }]}>
+                    <CardGlow color="#FFB066" height={120} opacity={0.55} width={64} />
+                  </View>
                   <View style={[styles.chartBar, { height: `${height}%` }]} />
                 </View>
                 <Text style={styles.chartStrong}>{done}</Text>
@@ -158,16 +203,14 @@ export default function HomeScreen() {
           <Text style={styles.kicker}>Automacoes</Text>
           <Text style={styles.cardTitle}>Fila de rotina</Text>
           <Text style={styles.cardDescription}>
-            Espaco para disparos programados, revisoes pendentes e tarefas repetitivas que voce quiser
-            consolidar depois.
+            Reserve este bloco para disparos programados, revisoes e fluxos repetitivos sem poluir a home.
           </Text>
         </Card>
         <Card style={styles.smallCard}>
           <Text style={styles.kicker}>Financeiro</Text>
           <Text style={styles.cardTitle}>Resumo operacional</Text>
           <Text style={styles.cardDescription}>
-            Cards de faturamento, metas mensais e alertas de contratos podem entrar aqui quando essa
-            area existir.
+            Quando essa area existir, o mobile ja tem um lugar claro para metas, faturamento e alertas.
           </Text>
         </Card>
         <Card style={styles.smallCard}>
@@ -183,8 +226,21 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { gap: 16 },
+  hero: {
+    gap: 24,
+    backgroundColor: palette.panelElevated,
+    borderColor: palette.borderStrong,
+    padding: 24,
+  },
+  heroGlow: {
+    position: 'absolute',
+    top: -112,
+    right: -120,
+    width: 420,
+    height: 420,
+  },
   heroCopy: { gap: 14 },
+  heroPanel: { gap: 12 },
   kicker: {
     color: palette.secondaryText,
     textTransform: 'uppercase',
@@ -192,8 +248,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  title: { color: palette.text, fontSize: 34, lineHeight: 36, fontWeight: '800' },
-  description: { color: palette.subtleText, fontSize: 15, lineHeight: 24 },
+  title: { color: palette.text, fontSize: 36, lineHeight: 37, fontWeight: '800', letterSpacing: -1.8 },
+  description: { color: palette.subtleText, fontSize: 15, lineHeight: 24, maxWidth: 420 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   button: {
     paddingHorizontal: 18,
@@ -201,37 +257,67 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: palette.softPanel,
   },
+  actionPrimary: { minWidth: 146 },
   primaryButton: { backgroundColor: palette.accent },
+  secondaryButton: { backgroundColor: palette.softPanelStrong, borderWidth: 1, borderColor: palette.border },
   buttonLabel: { color: palette.text, fontWeight: '600' },
-  primaryButtonLabel: { color: '#111722', fontWeight: '700' },
-  metrics: { gap: 12 },
+  primaryButtonLabel: { color: palette.text, fontWeight: '700' },
+  heroMetric: {
+    borderRadius: 24,
+    padding: 18,
+    backgroundColor: palette.softPanel,
+    borderWidth: 1,
+    borderColor: palette.border,
+  },
   metricLabel: { color: palette.subtleText, fontSize: 13 },
   metricValue: { color: palette.text, fontSize: 32, fontWeight: '800', marginTop: 8 },
-  featuredCard: { borderColor: 'rgba(91, 147, 255, 0.28)' },
+  quickGrid: { gap: 16 },
+  quickCard: { gap: 18 },
+  featuredCard: { borderColor: palette.borderStrong, backgroundColor: palette.panelElevated },
   cardTitle: { color: palette.text, fontSize: 26, fontWeight: '700', marginTop: 10 },
   cardDescription: { color: palette.subtleText, fontSize: 15, lineHeight: 24, marginTop: 12 },
   cardStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16, marginBottom: 16 },
   statText: { color: palette.subtleText, fontSize: 13 },
-  chart: { flexDirection: 'row', gap: 10, marginTop: 18, alignItems: 'flex-end', minHeight: 200 },
+  inlineStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8, marginBottom: 4 },
+  pill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: palette.softPanelStrong,
+    color: palette.text,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  productivityCard: { gap: 18 },
+  chart: { flexDirection: 'row', gap: 10, marginTop: 8, alignItems: 'flex-end', minHeight: 200 },
   chartColumn: { flex: 1, alignItems: 'center', gap: 8 },
   chartTrack: {
     width: '100%',
-    minHeight: 128,
-    borderRadius: 20,
+    minHeight: 140,
+    borderRadius: 22,
     backgroundColor: palette.softPanel,
     borderWidth: 1,
     borderColor: palette.border,
     justifyContent: 'flex-end',
     padding: 8,
+    overflow: 'hidden',
+  },
+  chartBarGlow: {
+    position: 'absolute',
+    left: 8,
+    right: 8,
+    bottom: -12,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   chartBar: {
     width: '100%',
-    borderRadius: 12,
+    borderRadius: 14,
     backgroundColor: palette.accent,
     minHeight: 18,
   },
   chartStrong: { color: palette.text, fontWeight: '700' },
   chartSmall: { color: palette.subtleText, fontSize: 12 },
   grid: { gap: 16 },
-  smallCard: { minHeight: 150 },
+  smallCard: { minHeight: 150, gap: 14 },
 });

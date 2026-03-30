@@ -106,6 +106,7 @@ export const fetchResponses = async ({
   const query = params.toString();
   return request(`/responses${query ? `?${query}` : ''}`, {}, true);
 };
+export const fetchProjects = async () => request('/projects', {}, true);
 export const markResponsesRead = async (ids: string[], read = true) =>
   request(
     '/responses/read',

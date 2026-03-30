@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import LoginGate from './components/auth/LoginGate'
 import Dashboard from './componets/dashboard'
 import Dock from './components/dock/Dock'
+import ProjectsHub from './components/projects/ProjectsHub'
 import ResponsesHub from './components/responses/ResponsesHub'
 import { fetchDays, fetchResponses, fetchSession } from './lib/plannerApi'
 import './App.css'
@@ -10,7 +11,7 @@ const routes = {
   home: '',
   planner: '#planner',
   messages: '#messages',
-  profile: '#profile',
+  projects: '#projects',
 }
 
 const WorkspaceIcon = ({ path, isHovered, active }) => {
@@ -36,7 +37,7 @@ const iconPaths = {
   home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z',
   planner: 'M8 3v3M16 3v3M4 9h16M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z',
   messages: 'M5 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z',
-  profile: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0',
+  projects: 'M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v8A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-10Z',
 }
 
 const getViewFromHash = (hash) => {
@@ -45,8 +46,8 @@ const getViewFromHash = (hash) => {
       return 'planner'
     case routes.messages:
       return 'messages'
-    case routes.profile:
-      return 'profile'
+    case routes.projects:
+      return 'projects'
     default:
       return 'home'
   }
@@ -139,6 +140,23 @@ function App() {
     navigateTo('home')
   }
 
+  const handleAuthenticated = (user) => {
+    setAuthState({
+      checked: true,
+      authenticated: true,
+      user,
+    })
+  }
+
+  const handleAuthLogout = () => {
+    setResponsesSummary({ total: 0, unreadTotal: 0, bySource: {}, unreadBySource: {} })
+    setAuthState({
+      checked: true,
+      authenticated: false,
+      user: null,
+    })
+  }
+
   const totalTasks = plannerDays.reduce((total, day) => total + day.tasks.length, 0)
   const completedTasks = plannerDays.reduce(
     (total, day) => total + day.tasks.filter((task) => task.done).length,
@@ -177,11 +195,11 @@ function App() {
       onClick: () => navigateTo('messages'),
     },
     {
-      key: 'profile',
-      label: 'Perfil',
-      isActive: activeView === 'profile',
-      icon: <WorkspaceIcon path={iconPaths.profile} active={activeView === 'profile'} />,
-      onClick: () => navigateTo('profile'),
+      key: 'projects',
+      label: 'Projetos',
+      isActive: activeView === 'projects',
+      icon: <WorkspaceIcon path={iconPaths.projects} active={activeView === 'projects'} />,
+      onClick: () => navigateTo('projects'),
     },
   ]
 
@@ -210,25 +228,10 @@ function App() {
             onBack={openHome}
             user={authState.user}
             onSummaryChange={setResponsesSummary}
-            onLogout={() => {
-              setResponsesSummary({ total: 0, unreadTotal: 0, bySource: {}, unreadBySource: {} })
-              setAuthState({
-                checked: true,
-                authenticated: false,
-                user: null,
-              })
-            }}
+            onLogout={handleAuthLogout}
           />
         ) : (
-          <LoginGate
-            onAuthenticated={(user) =>
-              setAuthState({
-                checked: true,
-                authenticated: true,
-                user,
-              })
-            }
-          />
+          <LoginGate onAuthenticated={handleAuthenticated} />
         )}
         <div className="app-dock">
           <Dock items={dockItems} panelHeight={32} baseItemSize={48} magnification={64} />
@@ -237,24 +240,25 @@ function App() {
     )
   }
 
-  if (activeView === 'profile') {
-    const viewCopy = {
-      eyebrow: 'Perfil',
-      title: 'Painel de perfil em construcao.',
-      description:
-        'Esse espaco fica pronto para configuracoes pessoais e preferencias do workspace quando voce decidir evoluir essa parte do projeto.',
-    }
-
+  if (activeView === 'projects') {
     return (
       <main className="app-shell app-shell-with-dock">
-        <section className="placeholder-view">
-          <span className="hero-kicker">{viewCopy.eyebrow}</span>
-          <h1>{viewCopy.title}</h1>
-          <p>{viewCopy.description}</p>
-          <button type="button" className="hero-button is-primary" onClick={() => navigateTo('planner')}>
-            Ir para tarefas
-          </button>
-        </section>
+        {!authState.checked ? (
+          <section className="placeholder-view">
+            <span className="hero-kicker">Autenticacao</span>
+            <h1>Validando sessao...</h1>
+            <p>Aguarde enquanto verificamos se voce ja tem acesso a area de projetos.</p>
+          </section>
+        ) : authState.authenticated ? (
+          <ProjectsHub user={authState.user} onBack={openHome} onLogout={handleAuthLogout} />
+        ) : (
+          <LoginGate
+            onAuthenticated={handleAuthenticated}
+            eyebrow="Acesso restrito"
+            title="Entre para abrir a area de projetos."
+            description="Essa area usa a mesma autenticacao da aba de mensagens para liberar tarefas e anotacoes internas."
+          />
+        )}
         <div className="app-dock">
           <Dock items={dockItems} panelHeight={32} baseItemSize={48} magnification={64} />
         </div>

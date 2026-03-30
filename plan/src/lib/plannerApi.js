@@ -105,6 +105,11 @@ export const fetchResponses = async ({ source = '', search = '', limit = 50 } = 
   return parseResponse(response)
 }
 
+export const fetchProjects = async () => {
+  const response = await fetch(`${API_BASE_URL}/projects`, withCredentials)
+  return parseResponse(response)
+}
+
 export const markResponsesRead = async ({ ids, read = true }) => {
   const response = await fetch(`${API_BASE_URL}/responses/read`, {
     ...withCredentials,

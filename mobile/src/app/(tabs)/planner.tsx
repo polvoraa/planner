@@ -240,7 +240,7 @@ export default function PlannerScreen() {
                   value={task.done}
                   onValueChange={(value) => runMutation(() => updateTask(activeDay.id, task.id, value))}
                   trackColor={{ false: palette.softPanel, true: palette.accent }}
-                  thumbColor="#ffffff"
+                  thumbColor={palette.text}
                 />
                 <Text style={[styles.taskText, task.done && styles.taskTextDone]}>{task.text}</Text>
               </View>
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   primaryButton: { backgroundColor: palette.accent },
   deleteButton: { marginTop: 18 },
   buttonLabel: { color: palette.text, fontWeight: '600' },
-  primaryButtonLabel: { color: '#111722', fontWeight: '700' },
+  primaryButtonLabel: { color: palette.text, fontWeight: '700' },
   dayList: { gap: 12, paddingRight: 8 },
   dayChip: {
     width: 156,
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     borderColor: palette.border,
     gap: 8,
   },
-  dayChipActive: { borderColor: 'rgba(255, 177, 94, 0.45)', backgroundColor: palette.softPanel },
+  dayChipActive: { borderColor: palette.accent, backgroundColor: palette.softPanelStrong },
   dayChipTitle: { color: palette.text, fontSize: 17, fontWeight: '700' },
   dayChipDate: { color: palette.subtleText, fontSize: 13 },
   dayChipMeta: { color: palette.secondaryText, fontSize: 12 },
@@ -324,11 +324,11 @@ const styles = StyleSheet.create({
   taskLeft: { flex: 1, flexDirection: 'row', gap: 12, alignItems: 'center' },
   taskText: { color: palette.text, flex: 1, fontSize: 15, lineHeight: 22 },
   taskTextDone: { textDecorationLine: 'line-through', color: palette.subtleText },
-  removeText: { color: '#ff9470', fontWeight: '700' },
+  removeText: { color: palette.danger, fontWeight: '700' },
   errorText: {
     marginBottom: 14,
-    color: '#ffd0c0',
-    backgroundColor: 'rgba(255, 124, 84, 0.14)',
+    color: palette.text,
+    backgroundColor: 'rgba(255, 127, 42, 0.14)',
     padding: 12,
     borderRadius: 14,
   },
