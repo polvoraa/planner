@@ -26,7 +26,16 @@ import {
   markResponsesAsRead,
   processUnreadResponseNotifications,
 } from './services/responseService.js'
-import { listProjects } from './services/projectService.js'
+import {
+  addProject,
+  addProjectNote,
+  addProjectTask,
+  listProjects,
+  removeProject,
+  removeProjectNote,
+  removeProjectTask,
+  updateProjectTaskState,
+} from './services/projectService.js'
 
 const app = express()
 const port = Number(process.env.PORT || 4000)
@@ -165,6 +174,156 @@ app.get('/api/responses', requireAuth, async (request, response, next) => {
 app.get('/api/projects', requireAuth, async (_request, response, next) => {
   try {
     const data = await listProjects()
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/projects', requireAuth, async (request, response, next) => {
+  const name = String(request.body?.name || '').trim()
+
+  if (!name) {
+    response.status(400).json({ message: 'O nome do projeto e obrigatorio.' })
+    return
+  }
+
+  try {
+    const data = await addProject(name)
+
+    if (data === false) {
+      response.status(400).json({ message: 'O nome do projeto e obrigatorio.' })
+      return
+    }
+
+    response.status(201).json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.delete('/api/projects/:projectId', requireAuth, async (request, response, next) => {
+  try {
+    const data = await removeProject(request.params.projectId)
+
+    if (data === false) {
+      response.status(404).json({ message: 'Projeto nao encontrado.' })
+      return
+    }
+
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/projects/:projectId/tasks', requireAuth, async (request, response, next) => {
+  const text = String(request.body?.text || '').trim()
+
+  if (!text) {
+    response.status(400).json({ message: 'O texto da tarefa e obrigatorio.' })
+    return
+  }
+
+  try {
+    const data = await addProjectTask(request.params.projectId, text)
+
+    if (!data) {
+      response.status(404).json({ message: 'Projeto nao encontrado.' })
+      return
+    }
+
+    response.status(201).json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.patch('/api/projects/:projectId/tasks/:taskId', requireAuth, async (request, response, next) => {
+  if (typeof request.body?.done !== 'boolean') {
+    response.status(400).json({ message: 'O campo done deve ser booleano.' })
+    return
+  }
+
+  try {
+    const data = await updateProjectTaskState(
+      request.params.projectId,
+      request.params.taskId,
+      request.body.done,
+    )
+
+    if (data === null) {
+      response.status(404).json({ message: 'Projeto nao encontrado.' })
+      return
+    }
+
+    if (data === false) {
+      response.status(404).json({ message: 'Tarefa nao encontrada.' })
+      return
+    }
+
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.delete('/api/projects/:projectId/tasks/:taskId', requireAuth, async (request, response, next) => {
+  try {
+    const data = await removeProjectTask(request.params.projectId, request.params.taskId)
+
+    if (data === null) {
+      response.status(404).json({ message: 'Projeto nao encontrado.' })
+      return
+    }
+
+    if (data === false) {
+      response.status(404).json({ message: 'Tarefa nao encontrada.' })
+      return
+    }
+
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/projects/:projectId/notes', requireAuth, async (request, response, next) => {
+  const text = String(request.body?.text || '').trim()
+
+  if (!text) {
+    response.status(400).json({ message: 'O texto da anotacao e obrigatorio.' })
+    return
+  }
+
+  try {
+    const data = await addProjectNote(request.params.projectId, text)
+
+    if (!data) {
+      response.status(404).json({ message: 'Projeto nao encontrado.' })
+      return
+    }
+
+    response.status(201).json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.delete('/api/projects/:projectId/notes/:noteId', requireAuth, async (request, response, next) => {
+  try {
+    const data = await removeProjectNote(request.params.projectId, request.params.noteId)
+
+    if (data === null) {
+      response.status(404).json({ message: 'Projeto nao encontrado.' })
+      return
+    }
+
+    if (data === false) {
+      response.status(404).json({ message: 'Anotacao nao encontrada.' })
+      return
+    }
+
     response.json(data)
   } catch (error) {
     next(error)

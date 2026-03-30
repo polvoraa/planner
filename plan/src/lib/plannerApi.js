@@ -110,6 +110,78 @@ export const fetchProjects = async () => {
   return parseResponse(response)
 }
 
+export const createProject = async (name) => {
+  const response = await fetch(`${API_BASE_URL}/projects`, {
+    ...withCredentials,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name }),
+  })
+  return parseResponse(response)
+}
+
+export const deleteProject = async (projectId) => {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
+    ...withCredentials,
+    method: 'DELETE',
+  })
+  return parseResponse(response)
+}
+
+export const createProjectTask = async (projectId, text) => {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}/tasks`, {
+    ...withCredentials,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ text }),
+  })
+  return parseResponse(response)
+}
+
+export const updateProjectTask = async (projectId, taskId, done) => {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}/tasks/${taskId}`, {
+    ...withCredentials,
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ done }),
+  })
+  return parseResponse(response)
+}
+
+export const deleteProjectTask = async (projectId, taskId) => {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}/tasks/${taskId}`, {
+    ...withCredentials,
+    method: 'DELETE',
+  })
+  return parseResponse(response)
+}
+
+export const createProjectNote = async (projectId, text) => {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}/notes`, {
+    ...withCredentials,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ text }),
+  })
+  return parseResponse(response)
+}
+
+export const deleteProjectNote = async (projectId, noteId) => {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}/notes/${noteId}`, {
+    ...withCredentials,
+    method: 'DELETE',
+  })
+  return parseResponse(response)
+}
+
 export const markResponsesRead = async ({ ids, read = true }) => {
   const response = await fetch(`${API_BASE_URL}/responses/read`, {
     ...withCredentials,

@@ -107,6 +107,52 @@ export const fetchResponses = async ({
   return request(`/responses${query ? `?${query}` : ''}`, {}, true);
 };
 export const fetchProjects = async () => request('/projects', {}, true);
+export const createProject = async (name: string) =>
+  request(
+    '/projects',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    },
+    true,
+  );
+export const deleteProject = async (projectId: string) =>
+  request(`/projects/${projectId}`, { method: 'DELETE' }, true);
+export const createProjectTask = async (projectId: string, text: string) =>
+  request(
+    `/projects/${projectId}/tasks`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    },
+    true,
+  );
+export const updateProjectTask = async (projectId: string, taskId: string, done: boolean) =>
+  request(
+    `/projects/${projectId}/tasks/${taskId}`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ done }),
+    },
+    true,
+  );
+export const deleteProjectTask = async (projectId: string, taskId: string) =>
+  request(`/projects/${projectId}/tasks/${taskId}`, { method: 'DELETE' }, true);
+export const createProjectNote = async (projectId: string, text: string) =>
+  request(
+    `/projects/${projectId}/notes`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    },
+    true,
+  );
+export const deleteProjectNote = async (projectId: string, noteId: string) =>
+  request(`/projects/${projectId}/notes/${noteId}`, { method: 'DELETE' }, true);
 export const markResponsesRead = async (ids: string[], read = true) =>
   request(
     '/responses/read',

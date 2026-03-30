@@ -1,10 +1,29 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { Card } from '@/components/Card';
 import { Screen } from '@/components/Screen';
-import { fetchProjects } from '@/lib/api';
+import {
+  createProject,
+  createProjectNote,
+  createProjectTask,
+  deleteProject,
+  deleteProjectNote,
+  deleteProjectTask,
+  fetchProjects,
+  updateProjectTask,
+} from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { palette } from '@/theme/palette';
 
@@ -60,23 +79,41 @@ function LoginCard() {
 export default function ProjectsScreen() {
   const { authState, logout } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
-  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [draftProject, setDraftProject] = useState('');
+  const [draftTask, setDraftTask] = useState('');
+  const [draftNote, setDraftNote] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isProjectPanelOpen, setIsProjectPanelOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const syncProjects = useCallback((payload: any) => {
+    const nextProjects = payload.workspace?.projects || payload.projects || [];
+    setProjects(nextProjects);
+    setSelectedProjectId((current) => {
+      if (nextProjects.some((project: any) => project.id === current)) {
+        return current;
+      }
+
+      return nextProjects.find((project: any) => project.slug === 'nova-studio')?.id ?? nextProjects[0]?.id ?? '';
+    });
+  }, []);
 
   const loadProjects = useCallback(async () => {
     if (!authState.authenticated) return;
-    setIsLoadingProjects(true);
+    setIsLoading(true);
     setErrorMessage('');
     try {
       const payload = await fetchProjects();
-      setProjects(payload.projects || []);
+      syncProjects(payload);
     } catch (error: any) {
       setProjects([]);
       setErrorMessage(error.message);
     } finally {
-      setIsLoadingProjects(false);
+      setIsLoading(false);
     }
-  }, [authState.authenticated]);
+  }, [authState.authenticated, syncProjects]);
 
   useFocusEffect(
     useCallback(() => {
@@ -85,9 +122,79 @@ export default function ProjectsScreen() {
   );
 
   const activeProject = useMemo(
-    () => projects.find((project) => project.slug === 'nova-studio') || projects[0] || null,
-    [projects],
+    () =>
+      projects.find((project) => project.id === selectedProjectId) ??
+      projects.find((project) => project.slug === 'nova-studio') ??
+      projects[0] ??
+      null,
+    [projects, selectedProjectId],
   );
+
+  const completedTasks = activeProject?.tasks.filter((task: any) => task.done).length ?? 0;
+  const pendingTasks = (activeProject?.tasks.length ?? 0) - completedTasks;
+
+  const runMutation = async (
+    operation: () => Promise<any>,
+    options?: { selectProjectId?: (payload: any) => string },
+  ) => {
+    setIsSaving(true);
+    setErrorMessage('');
+    try {
+      const payload = await operation();
+      syncProjects(payload);
+      if (options?.selectProjectId) {
+        const nextProjectId = options.selectProjectId(payload);
+        if (nextProjectId) {
+          setSelectedProjectId(nextProjectId);
+        }
+      }
+      return payload;
+    } catch (error: any) {
+      setErrorMessage(error.message);
+      return null;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCreateProject = async () => {
+    const name = draftProject.trim();
+    if (!name) {
+      return;
+    }
+
+    const payload = await runMutation(() => createProject(name), {
+      selectProjectId: (result) => result.projectId,
+    });
+
+    if (payload) {
+      setDraftProject('');
+    }
+  };
+
+  const handleAddTask = async () => {
+    const text = draftTask.trim();
+    if (!text || !activeProject?.id) {
+      return;
+    }
+
+    const payload = await runMutation(() => createProjectTask(activeProject.id, text));
+    if (payload) {
+      setDraftTask('');
+    }
+  };
+
+  const handleAddNote = async () => {
+    const text = draftNote.trim();
+    if (!text || !activeProject?.id) {
+      return;
+    }
+
+    const payload = await runMutation(() => createProjectNote(activeProject.id, text));
+    if (payload) {
+      setDraftNote('');
+    }
+  };
 
   if (!authState.checked || authState.loading) {
     return (
@@ -109,13 +216,25 @@ export default function ProjectsScreen() {
     );
   }
 
+  if (isLoading) {
+    return (
+      <Screen>
+        <Card>
+          <Text style={styles.kicker}>Sincronizando</Text>
+          <Text style={styles.title}>Carregando projetos...</Text>
+          <ActivityIndicator color={palette.accent} style={{ marginTop: 16 }} />
+        </Card>
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <Card>
         <Text style={styles.kicker}>Projetos internos</Text>
         <Text style={styles.title}>{activeProject?.name || 'Projetos'}</Text>
         <Text style={styles.description}>
-          Area reservada para acompanhar tarefas e anotacoes do projeto ativo sem misturar com o restante do app.
+          Selecione um projeto, adicione tarefas com checkbox e mantenha anotacoes em lista simples.
         </Text>
         <View style={styles.userRow}>
           <Text style={styles.userChip}>{authState.user?.username || 'Sessao ativa'}</Text>
@@ -127,63 +246,189 @@ export default function ProjectsScreen() {
 
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-      {isLoadingProjects ? (
-        <Card>
-          <Text style={styles.kicker}>Sincronizando</Text>
-          <Text style={styles.description}>
-            Aguarde enquanto buscamos os dados compartilhados do workspace.
-          </Text>
-          <ActivityIndicator color={palette.accent} style={{ marginTop: 16 }} />
-        </Card>
-      ) : null}
+      <Card>
+        <Text style={styles.kicker}>Adicionar projeto</Text>
+        <View style={styles.formRow}>
+          <TextInput
+            style={styles.input}
+            value={draftProject}
+            onChangeText={setDraftProject}
+            placeholder="Nome do projeto"
+            placeholderTextColor={palette.muted}
+          />
+          <Pressable style={[styles.button, styles.primaryButton]} onPress={handleCreateProject} disabled={isSaving}>
+            <Text style={styles.primaryButtonLabel}>{isSaving ? 'Salvando...' : 'Adicionar'}</Text>
+          </Pressable>
+        </View>
+      </Card>
 
-      {!isLoadingProjects && !activeProject ? (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayList}>
+        {projects.map((project) => (
+          <Pressable
+            key={project.id}
+            style={[styles.dayChip, project.id === activeProject?.id && styles.dayChipActive]}
+            onPress={() => setSelectedProjectId(project.id)}>
+            <Text style={[styles.dayChipTitle, project.id === activeProject?.id && styles.dayChipTitleActive]}>
+              {project.name}
+            </Text>
+            <Text style={[styles.dayChipDate, project.id === activeProject?.id && styles.dayChipTitleActive]}>
+              {project.tasks.length} tarefas
+            </Text>
+            <Text style={[styles.dayChipMeta, project.id === activeProject?.id && styles.dayChipTitleActive]}>
+              {project.notes.length} anotacoes
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {!activeProject ? (
         <Card>
           <Text style={styles.kicker}>Sem projeto</Text>
           <Text style={styles.title}>Nenhum projeto disponivel.</Text>
-          <Text style={styles.description}>
-            Quando houver dados salvos na API, eles aparecem aqui no mobile e no web.
-          </Text>
+          <Text style={styles.description}>Crie um projeto para liberar tarefas e anotacoes compartilhadas.</Text>
         </Card>
-      ) : null}
-
-      {!isLoadingProjects && activeProject ? (
+      ) : (
         <>
           <Card>
-            <Text style={styles.sectionTitle}>Tarefas</Text>
-            <View style={styles.list}>
-              {activeProject.tasks.map((task: string) => (
-                <View key={task} style={styles.listItem}>
-                  <Text style={styles.listBullet}>-</Text>
-                  <Text style={styles.listText}>{task}</Text>
+            <View style={styles.panelHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.kicker}>Lista de tarefas</Text>
+                <Text style={styles.panelTitle}>{activeProject.name}</Text>
+              </View>
+              <Pressable
+                style={styles.menuButton}
+                onPress={() => setIsProjectPanelOpen(true)}
+                accessibilityLabel="Abrir painel do projeto">
+                <View style={styles.menuDot} />
+                <View style={styles.menuDot} />
+                <View style={styles.menuDot} />
+              </Pressable>
+            </View>
+            <View style={styles.formRow}>
+              <TextInput
+                style={styles.input}
+                value={draftTask}
+                onChangeText={setDraftTask}
+                placeholder="Adicionar tarefa"
+                placeholderTextColor={palette.muted}
+              />
+              <Pressable style={[styles.button, styles.primaryButton]} onPress={handleAddTask} disabled={isSaving}>
+                <Text style={styles.primaryButtonLabel}>{isSaving ? 'Salvando...' : 'Adicionar'}</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.taskList}>
+              {activeProject.tasks.map((task: any) => (
+                <View key={task.id} style={[styles.taskItem, task.done && styles.taskItemDone]}>
+                  <View style={styles.taskLeft}>
+                    <Switch
+                      value={task.done}
+                      onValueChange={(value) =>
+                        runMutation(() => updateProjectTask(activeProject.id, task.id, value))
+                      }
+                      trackColor={{ false: palette.softPanel, true: palette.accent }}
+                      thumbColor={palette.text}
+                    />
+                    <Text style={[styles.taskText, task.done && styles.taskTextDone]}>{task.text}</Text>
+                  </View>
+                  <Pressable onPress={() => runMutation(() => deleteProjectTask(activeProject.id, task.id))}>
+                    <Text style={styles.removeText}>Remover</Text>
+                  </Pressable>
                 </View>
               ))}
             </View>
           </Card>
 
           <Card>
-            <Text style={styles.sectionTitle}>Anotacoes</Text>
-            <View style={styles.list}>
-              {activeProject.notes.map((note: string) => (
-                <View key={note} style={styles.listItem}>
-                  <Text style={styles.listBullet}>-</Text>
-                  <Text style={styles.listText}>{note}</Text>
+            <Text style={styles.kicker}>Lista de anotacoes</Text>
+            <Text style={styles.panelTitle}>{activeProject.name}</Text>
+            <View style={styles.formRow}>
+              <TextInput
+                style={styles.input}
+                value={draftNote}
+                onChangeText={setDraftNote}
+                placeholder="Adicionar anotacao"
+                placeholderTextColor={palette.muted}
+              />
+              <Pressable style={[styles.button, styles.primaryButton]} onPress={handleAddNote} disabled={isSaving}>
+                <Text style={styles.primaryButtonLabel}>{isSaving ? 'Salvando...' : 'Adicionar'}</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.taskList}>
+              {activeProject.notes.map((note: any) => (
+                <View key={note.id} style={styles.noteItem}>
+                  <Text style={styles.taskText}>{note.text}</Text>
+                  <Pressable onPress={() => runMutation(() => deleteProjectNote(activeProject.id, note.id))}>
+                    <Text style={styles.removeText}>Remover</Text>
+                  </Pressable>
                 </View>
               ))}
             </View>
           </Card>
         </>
+      )}
+
+      {activeProject ? (
+        <Modal
+          visible={isProjectPanelOpen}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setIsProjectPanelOpen(false)}>
+          <View style={styles.modalOverlay}>
+            <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setIsProjectPanelOpen(false)} />
+            <View style={styles.modalSheet}>
+              <Card>
+                <View style={styles.modalTopBar}>
+                  <Text style={styles.kicker}>Projeto selecionado</Text>
+                  <Pressable style={styles.closeButton} onPress={() => setIsProjectPanelOpen(false)}>
+                    <Text style={styles.buttonLabel}>Fechar</Text>
+                  </Pressable>
+                </View>
+                <Text style={styles.title}>{activeProject.name}</Text>
+                <View style={styles.statsRow}>
+                  <View style={styles.statBox}>
+                    <Text style={styles.statLabel}>Concluidas</Text>
+                    <Text style={styles.statValue}>{completedTasks}</Text>
+                  </View>
+                  <View style={styles.statBox}>
+                    <Text style={styles.statLabel}>Pendentes</Text>
+                    <Text style={styles.statValue}>{pendingTasks}</Text>
+                  </View>
+                </View>
+                <Pressable
+                  style={[styles.button, styles.deleteButton]}
+                  onPress={async () => {
+                    const payload = await runMutation(() => deleteProject(activeProject.id));
+                    if (payload) {
+                      setIsProjectPanelOpen(false);
+                    }
+                  }}>
+                  <Text style={styles.buttonLabel}>Remover projeto</Text>
+                </Pressable>
+              </Card>
+            </View>
+          </View>
+        </Modal>
       ) : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  kicker: { color: palette.secondaryText, textTransform: 'uppercase', letterSpacing: 2, fontSize: 12, fontWeight: '700' },
+  kicker: {
+    color: palette.secondaryText,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    fontSize: 12,
+    fontWeight: '700',
+  },
   title: { color: palette.text, fontSize: 30, lineHeight: 34, fontWeight: '800', marginTop: 10 },
+  panelTitle: { color: palette.text, fontSize: 24, fontWeight: '700', marginTop: 10 },
   description: { color: palette.subtleText, fontSize: 15, lineHeight: 24, marginTop: 12 },
   sectionTitle: { color: palette.text, fontSize: 22, fontWeight: '700' },
   formGroup: { gap: 12, marginTop: 18 },
+  formRow: { gap: 12, marginTop: 16 },
   input: {
     borderRadius: 16,
     borderWidth: 1,
@@ -196,8 +441,10 @@ const styles = StyleSheet.create({
   },
   button: { paddingHorizontal: 18, paddingVertical: 14, borderRadius: 16, backgroundColor: palette.softPanel },
   primaryButton: { backgroundColor: palette.accent },
+  deleteButton: { marginTop: 18 },
   buttonLabel: { color: palette.text, fontWeight: '600' },
   primaryButtonLabel: { color: palette.text, fontWeight: '700' },
+  panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
   userRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginTop: 18 },
   userChip: { color: palette.text, backgroundColor: palette.softPanel, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
   helperText: { color: palette.subtleText, marginTop: 12 },
@@ -207,15 +454,89 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 14,
   },
-  list: { gap: 12, marginTop: 18 },
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    padding: 14,
+  dayList: { gap: 12, paddingRight: 8 },
+  dayChip: {
+    width: 180,
+    borderRadius: 20,
+    padding: 16,
+    backgroundColor: palette.panel,
+    borderWidth: 1,
+    borderColor: palette.border,
+    gap: 8,
+  },
+  dayChipActive: { borderColor: palette.accent, backgroundColor: palette.softPanelStrong },
+  dayChipTitle: { color: palette.text, fontSize: 17, fontWeight: '700' },
+  dayChipDate: { color: palette.subtleText, fontSize: 13 },
+  dayChipMeta: { color: palette.secondaryText, fontSize: 12 },
+  dayChipTitleActive: { color: palette.accent },
+  statsRow: { flexDirection: 'row', gap: 12, marginTop: 18 },
+  statBox: { flex: 1, borderRadius: 18, padding: 16, backgroundColor: palette.softPanel },
+  statLabel: { color: palette.subtleText, fontSize: 13 },
+  statValue: { color: palette.text, fontSize: 30, fontWeight: '800', marginTop: 8 },
+  menuButton: {
+    width: 52,
+    height: 52,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.softPanel,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  menuDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: palette.text,
+  },
+  taskList: { gap: 12, marginTop: 18 },
+  taskItem: {
+    borderRadius: 18,
+    padding: 14,
+    backgroundColor: palette.softPanel,
+    borderWidth: 1,
+    borderColor: palette.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    alignItems: 'center',
+  },
+  noteItem: {
+    borderRadius: 18,
+    padding: 14,
+    backgroundColor: palette.softPanel,
+    borderWidth: 1,
+    borderColor: palette.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    alignItems: 'center',
+  },
+  taskItemDone: { opacity: 0.72 },
+  taskLeft: { flex: 1, flexDirection: 'row', gap: 12, alignItems: 'center' },
+  taskText: { color: palette.text, flex: 1, fontSize: 15, lineHeight: 22 },
+  taskTextDone: { textDecorationLine: 'line-through', color: palette.subtleText },
+  removeText: { color: palette.danger, fontWeight: '700' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.62)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  modalTopBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  closeButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
     backgroundColor: palette.softPanel,
   },
-  listBullet: { color: palette.accent, fontSize: 18, lineHeight: 22, fontWeight: '800' },
-  listText: { flex: 1, color: palette.text, fontSize: 15, lineHeight: 22 },
 });

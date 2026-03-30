@@ -1,11 +1,29 @@
 import mongoose from 'mongoose'
 
+const projectTaskSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    text: { type: String, required: true, trim: true },
+    done: { type: Boolean, default: false },
+  },
+  { _id: false },
+)
+
+const projectNoteSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    text: { type: String, required: true, trim: true },
+  },
+  { _id: false },
+)
+
 const projectSchema = new mongoose.Schema(
   {
+    id: { type: String, required: true },
     slug: { type: String, required: true, trim: true },
     name: { type: String, required: true, trim: true },
-    tasks: { type: [String], default: [] },
-    notes: { type: [String], default: [] },
+    tasks: { type: [projectTaskSchema], default: [] },
+    notes: { type: [projectNoteSchema], default: [] },
   },
   { _id: false },
 )
