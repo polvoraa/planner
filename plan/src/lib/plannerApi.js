@@ -174,6 +174,32 @@ export const createProjectNote = async (projectId, text) => {
   return parseResponse(response)
 }
 
+export const previewProjectAiCommand = async ({ command, currentProjectId }) => {
+  const response = await fetch(`${API_BASE_URL}/ai/project-command/preview`, {
+    ...withCredentials,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ command, currentProjectId }),
+  })
+
+  return parseResponse(response)
+}
+
+export const applyProjectAiCommand = async (preview) => {
+  const response = await fetch(`${API_BASE_URL}/ai/project-command/apply`, {
+    ...withCredentials,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ preview }),
+  })
+
+  return parseResponse(response)
+}
+
 export const deleteProjectNote = async (projectId, noteId) => {
   const response = await fetch(`${API_BASE_URL}/projects/${projectId}/notes/${noteId}`, {
     ...withCredentials,

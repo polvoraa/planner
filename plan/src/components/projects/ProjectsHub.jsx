@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  applyProjectAiCommand,
   createProject,
   createProjectNote,
   createProjectTask,
@@ -8,6 +9,7 @@ import {
   deleteProjectTask,
   fetchProjects,
   logout,
+  previewProjectAiCommand,
   updateProjectTask,
 } from '../../lib/plannerApi'
 
@@ -21,8 +23,13 @@ function ProjectsHub({ user, onLogout, onBack }) {
   const [draftProject, setDraftProject] = useState('')
   const [draftTask, setDraftTask] = useState('')
   const [draftNote, setDraftNote] = useState('')
+  const [aiCommand, setAiCommand] = useState('')
+  const [aiPreview, setAiPreview] = useState(null)
+  const [aiMessage, setAiMessage] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isAiLoading, setIsAiLoading] = useState(false)
+  const [isApplyingAi, setIsApplyingAi] = useState(false)
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -84,6 +91,13 @@ function ProjectsHub({ user, onLogout, onBack }) {
     [projects, selectedProjectId],
   )
 
+  const isBusy = isSaving || isAiLoading || isApplyingAi
+
+  useEffect(() => {
+    setAiPreview(null)
+    setAiMessage('')
+  }, [activeProject?.id])
+
   const completedTasks = activeProject?.tasks.filter((task) => task.done).length ?? 0
   const pendingTasks = (activeProject?.tasks.length ?? 0) - completedTasks
 
@@ -111,6 +125,7 @@ function ProjectsHub({ user, onLogout, onBack }) {
   const runMutation = async (operation, options = {}) => {
     setIsSaving(true)
     setErrorMessage('')
+    setAiMessage('')
 
     try {
       const payload = await operation()
@@ -187,6 +202,71 @@ function ProjectsHub({ user, onLogout, onBack }) {
     }
   }
 
+  const handleGenerateAiPreview = async (event) => {
+    event.preventDefault()
+
+    const command = aiCommand.trim()
+
+    if (!command || !activeProject?.id) {
+      return
+    }
+
+    setIsAiLoading(true)
+    setErrorMessage('')
+    setAiMessage('')
+
+    try {
+      const payload = await previewProjectAiCommand({
+        command,
+        currentProjectId: activeProject.id,
+      })
+
+      setAiPreview(payload)
+    } catch (error) {
+      setAiPreview(null)
+      setErrorMessage(error.message)
+    } finally {
+      setIsAiLoading(false)
+    }
+  }
+
+  const handleApplyAiPreview = async () => {
+    if (!aiPreview) {
+      return
+    }
+
+    setIsApplyingAi(true)
+    setErrorMessage('')
+    setAiMessage('')
+
+    try {
+      const payload = await applyProjectAiCommand(aiPreview)
+      syncProjects(payload)
+
+      if (payload.applied?.targetProject?.id) {
+        setSelectedProjectId(payload.applied.targetProject.id)
+      }
+
+      const created = payload.applied?.created || {}
+      const createdCount =
+        (created.projectTasks || 0) +
+        (created.projectNotes || 0) +
+        (created.dailyNotes || 0)
+
+      setAiPreview(null)
+      setAiCommand('')
+      setAiMessage(
+        createdCount
+          ? `IA aplicada com ${createdCount} item(ns) criado(s).`
+          : 'Nenhum item novo foi aplicado.',
+      )
+    } catch (error) {
+      setErrorMessage(error.message)
+    } finally {
+      setIsApplyingAi(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <section className="projects-page">
@@ -223,9 +303,9 @@ function ProjectsHub({ user, onLogout, onBack }) {
               value={draftProject}
               onChange={(event) => setDraftProject(event.target.value)}
               placeholder="Adicionar projeto"
-              disabled={isSaving}
+              disabled={isBusy}
             />
-            <button type="submit" disabled={isSaving}>
+            <button type="submit" disabled={isBusy}>
               {isSaving ? 'Salvando...' : 'Adicionar'}
             </button>
           </form>
@@ -268,9 +348,9 @@ function ProjectsHub({ user, onLogout, onBack }) {
             value={draftProject}
             onChange={(event) => setDraftProject(event.target.value)}
             placeholder="Adicionar projeto"
-            disabled={isSaving}
+            disabled={isBusy}
           />
-          <button type="submit" disabled={isSaving}>
+          <button type="submit" disabled={isBusy}>
             {isSaving ? 'Salvando...' : 'Adicionar'}
           </button>
         </form>
@@ -303,7 +383,90 @@ function ProjectsHub({ user, onLogout, onBack }) {
             </div>
           ) : null}
 
+          {aiMessage ? (
+            <div className="feedback-banner feedback-banner-success" role="status">
+              {aiMessage}
+            </div>
+          ) : null}
+
         {selectedProjectSummary}
+
+        <section className="task-panel ai-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">Assistente com IA</span>
+              <h3>Comando natural para {activeProject.name}</h3>
+            </div>
+          </div>
+
+          <form className="task-form ai-command-form" onSubmit={handleGenerateAiPreview}>
+            <textarea
+              value={aiCommand}
+              onChange={(event) => setAiCommand(event.target.value)}
+              placeholder="Ex.: adiciona fazer posts, conseguir clientes e revisar proposta no Nova Studio"
+              disabled={isBusy}
+              rows={4}
+            />
+            <button type="submit" disabled={isBusy || !aiCommand.trim()}>
+              {isAiLoading ? 'Analisando...' : 'Analisar com IA'}
+            </button>
+          </form>
+
+          {aiPreview ? (
+            <div className="ai-preview-card">
+              <div className="ai-preview-head">
+                <div>
+                  <span className="eyebrow">Preview</span>
+                  <strong>
+                    {aiPreview.targetProject?.name
+                      ? `Destino principal: ${aiPreview.targetProject.name}`
+                      : 'Sem projeto definido'}
+                  </strong>
+                </div>
+                <span className="card-tag">Groq</span>
+              </div>
+
+              <div className="ai-preview-list">
+                {aiPreview.actions?.map((action, index) => (
+                  <article key={`${action.type}-${index}-${action.text}`} className="ai-preview-item">
+                    <div>
+                      <strong>{formatAiActionLabel(action.type)}</strong>
+                      <p>{action.text}</p>
+                    </div>
+                    <small>{formatAiDestination(action)}</small>
+                  </article>
+                ))}
+              </div>
+
+              {aiPreview.warnings?.length ? (
+                <div className="ai-preview-warnings">
+                  {aiPreview.warnings.map((warning) => (
+                    <p key={warning}>{warning}</p>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="ai-preview-actions">
+                <button
+                  type="button"
+                  className="sidebar-action is-primary"
+                  disabled={isBusy || !hasApplicableAiAction(aiPreview)}
+                  onClick={handleApplyAiPreview}
+                >
+                  {isApplyingAi ? 'Aplicando...' : 'Aplicar sugestoes'}
+                </button>
+                <button
+                  type="button"
+                  className="sidebar-ghost-action ai-reset-button"
+                  disabled={isBusy}
+                  onClick={() => setAiPreview(null)}
+                >
+                  Limpar preview
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </section>
 
         <div className={`mobile-panel project-mobile-panel ${isMobilePanelOpen ? 'is-open' : ''}`} aria-hidden={!isMobilePanelOpen}>
           <button
@@ -368,7 +531,7 @@ function ProjectsHub({ user, onLogout, onBack }) {
               <button
                 type="button"
                 className="day-delete-button"
-                disabled={isSaving}
+                disabled={isBusy}
                 onClick={() => runMutation(() => deleteProject(activeProject.id))}
               >
                 Remover projeto
@@ -393,9 +556,9 @@ function ProjectsHub({ user, onLogout, onBack }) {
               value={draftTask}
               onChange={(event) => setDraftTask(event.target.value)}
               placeholder="Adicionar tarefa"
-              disabled={isSaving}
+              disabled={isBusy}
             />
-            <button type="submit" disabled={isSaving}>
+            <button type="submit" disabled={isBusy}>
               {isSaving ? 'Salvando...' : 'Adicionar'}
             </button>
           </form>
@@ -407,7 +570,7 @@ function ProjectsHub({ user, onLogout, onBack }) {
                   <input
                     type="checkbox"
                     checked={task.done}
-                    disabled={isSaving}
+                    disabled={isBusy}
                     onChange={() => runMutation(() => updateProjectTask(activeProject.id, task.id, !task.done))}
                   />
                   <span>{task.text}</span>
@@ -416,7 +579,7 @@ function ProjectsHub({ user, onLogout, onBack }) {
                 <button
                   type="button"
                   className="task-remove"
-                  disabled={isSaving}
+                  disabled={isBusy}
                   onClick={() => runMutation(() => deleteProjectTask(activeProject.id, task.id))}
                 >
                   Remover
@@ -440,9 +603,9 @@ function ProjectsHub({ user, onLogout, onBack }) {
               value={draftNote}
               onChange={(event) => setDraftNote(event.target.value)}
               placeholder="Adicionar anotacao"
-              disabled={isSaving}
+              disabled={isBusy}
             />
-            <button type="submit" disabled={isSaving}>
+            <button type="submit" disabled={isBusy}>
               {isSaving ? 'Salvando...' : 'Adicionar'}
             </button>
           </form>
@@ -457,7 +620,7 @@ function ProjectsHub({ user, onLogout, onBack }) {
                 <button
                   type="button"
                   className="task-remove"
-                  disabled={isSaving}
+                  disabled={isBusy}
                   onClick={() => runMutation(() => deleteProjectNote(activeProject.id, note.id))}
                 >
                   Remover
@@ -470,5 +633,35 @@ function ProjectsHub({ user, onLogout, onBack }) {
     </section>
   )
 }
+
+const formatAiActionLabel = (type) => {
+  switch (type) {
+    case 'project_task':
+      return 'Tarefa do projeto'
+    case 'project_note':
+      return 'Anotacao do projeto'
+    case 'daily_task':
+      return 'Tarefa do dia'
+    case 'personal_note':
+      return 'Item pessoal'
+    default:
+      return 'Sugestao'
+  }
+}
+
+const formatAiDestination = (action) => {
+  if (action.destination === 'project') {
+    return action.projectName || 'Projeto'
+  }
+
+  if (action.destination === 'daily') {
+    return action.destinationLabel || 'Nota do dia de hoje'
+  }
+
+  return action.reason || 'Nao sera aplicado'
+}
+
+const hasApplicableAiAction = (preview) =>
+  (preview?.actions || []).some((action) => action.destination === 'project' || action.destination === 'daily')
 
 export default ProjectsHub

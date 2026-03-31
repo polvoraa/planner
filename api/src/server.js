@@ -36,6 +36,10 @@ import {
   removeProjectTask,
   updateProjectTaskState,
 } from './services/projectService.js'
+import {
+  applyProjectCommandPreview,
+  generateProjectCommandPreview,
+} from './services/aiService.js'
 
 const app = express()
 const port = Number(process.env.PORT || 4000)
@@ -310,6 +314,37 @@ app.post('/api/projects/:projectId/notes', requireAuth, async (request, response
   }
 })
 
+app.post('/api/ai/project-command/preview', requireAuth, async (request, response, next) => {
+  const command = String(request.body?.command || '').trim()
+  const currentProjectId = String(request.body?.currentProjectId || '').trim()
+
+  if (!command) {
+    response.status(400).json({ message: 'O comando para a IA e obrigatorio.' })
+    return
+  }
+
+  try {
+    const data = await generateProjectCommandPreview({ command, currentProjectId })
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/ai/project-command/apply', requireAuth, async (request, response, next) => {
+  if (!request.body?.preview || typeof request.body.preview !== 'object') {
+    response.status(400).json({ message: 'O preview da IA e obrigatorio.' })
+    return
+  }
+
+  try {
+    const data = await applyProjectCommandPreview({ preview: request.body.preview })
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
 app.delete('/api/projects/:projectId/notes/:noteId', requireAuth, async (request, response, next) => {
   try {
     const data = await removeProjectNote(request.params.projectId, request.params.noteId)
@@ -479,7 +514,7 @@ app.delete('/api/days/:dayId/tasks/:taskId', async (request, response, next) => 
 
 app.use((error, _request, response, _next) => {
   console.error(error)
-  response.status(500).json({ message: 'Erro interno do servidor.' })
+  response.status(error.statusCode || 500).json({ message: error.message || 'Erro interno do servidor.' })
 })
 
 const startServer = async () => {

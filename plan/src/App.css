@@ -270,6 +270,107 @@
   line-height: 1.6;
 }
 
+.feedback-banner-success {
+  border-color: rgba(122, 222, 161, 0.24);
+  background: rgba(98, 214, 145, 0.12);
+  color: #d8ffe6;
+}
+
+.ai-panel {
+  gap: 18px;
+}
+
+.ai-command-form {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ai-command-form textarea {
+  min-height: 108px;
+  resize: vertical;
+  padding: 14px 16px;
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  background: #1a1a1a;
+  color: #ffffff;
+  font: inherit;
+  outline: 1px solid transparent;
+  transition: outline-color 0.2s ease;
+}
+
+.ai-command-form textarea:focus {
+  outline-color: rgba(255, 106, 0, 0.6);
+}
+
+.ai-command-form textarea::placeholder {
+  color: #6b6b6b;
+}
+
+.ai-preview-card {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 24px;
+  border: 1px solid #2a2a2a;
+  background:
+    radial-gradient(circle at top right, rgba(255, 106, 0, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(24, 24, 24, 0.98), rgba(16, 16, 16, 0.99));
+}
+
+.ai-preview-head,
+.ai-preview-item,
+.ai-preview-actions {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.ai-preview-head strong,
+.ai-preview-item strong {
+  display: block;
+}
+
+.ai-preview-list {
+  display: grid;
+  gap: 12px;
+}
+
+.ai-preview-item {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+}
+
+.ai-preview-item p,
+.ai-preview-item small,
+.ai-preview-warnings p {
+  margin: 6px 0 0;
+  color: #b3b3b3;
+  line-height: 1.6;
+}
+
+.ai-preview-item small {
+  margin: 0;
+  text-align: right;
+}
+
+.ai-preview-warnings {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 196, 107, 0.18);
+  background: rgba(255, 175, 87, 0.08);
+}
+
+.ai-preview-actions {
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ai-reset-button {
+  margin-top: 0;
+}
+
 .responses-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 220px;
@@ -711,6 +812,16 @@
     display: flex;
     padding: 18px;
     border-radius: 22px;
+  }
+
+  .ai-preview-head,
+  .ai-preview-item,
+  .ai-preview-actions {
+    flex-direction: column;
+  }
+
+  .ai-preview-item small {
+    text-align: left;
   }
 
   .project-note-item {

@@ -3,22 +3,26 @@ import { defaultDays } from '../data/defaultDays.js'
 import { PlannerBoard } from '../models/PlannerBoard.js'
 
 const BOARD_KEY = 'main'
+const APP_TIMEZONE = String(process.env.APP_TIMEZONE || 'America/Sao_Paulo').trim() || 'America/Sao_Paulo'
 const DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
   day: '2-digit',
   month: 'short',
+  timeZone: APP_TIMEZONE,
 })
 
 const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
   weekday: 'long',
+  timeZone: APP_TIMEZONE,
 })
 
-const toDateKey = (date = new Date()) => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
+const DATE_KEY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  timeZone: APP_TIMEZONE,
+})
 
-  return `${year}-${month}-${day}`
-}
+const toDateKey = (date = new Date()) => DATE_KEY_FORMATTER.format(date)
 
 const toDateLabel = (date = new Date()) =>
   DATE_FORMATTER.format(date).replace('.', '').replace(' de ', ' ')
@@ -54,6 +58,8 @@ const formatBoard = (board) => ({
 
 const findDay = (board, dayId) => board.days.find((day) => day.id === dayId)
 const findDayByDateKey = (board, dateKey) => board.days.find((day) => day.dateKey === dateKey)
+const findLegacyTodayDay = (board) => board.days.find((day) => day.id === 'today')
+const findLegacyTomorrowDay = (board) => board.days.find((day) => day.id === 'tomorrow')
 
 export const getOrCreateBoard = async () => {
   let board = await PlannerBoard.findOne({ key: BOARD_KEY })
@@ -92,6 +98,40 @@ export const addDay = async (inputDateKey) => {
     }
   }
 
+  const todayDateKey = toDateKey()
+  const legacyTodayDay = dateKey === todayDateKey ? findLegacyTodayDay(board) : null
+
+  if (legacyTodayDay) {
+    legacyTodayDay.dateKey = todayDateKey
+    legacyTodayDay.label = toDayLabel(date)
+    legacyTodayDay.date = toDateLabel(date)
+    await board.save()
+
+    return {
+      board: formatBoard(board),
+      dayId: legacyTodayDay.id,
+      created: false,
+    }
+  }
+
+  const tomorrowDate = new Date()
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrowDateKey = toDateKey(tomorrowDate)
+  const legacyTomorrowDay = dateKey === tomorrowDateKey ? findLegacyTomorrowDay(board) : null
+
+  if (legacyTomorrowDay) {
+    legacyTomorrowDay.dateKey = tomorrowDateKey
+    legacyTomorrowDay.label = toDayLabel(date)
+    legacyTomorrowDay.date = toDateLabel(date)
+    await board.save()
+
+    return {
+      board: formatBoard(board),
+      dayId: legacyTomorrowDay.id,
+      created: false,
+    }
+  }
+
   const nextDay = buildDay(date)
   board.days.unshift(nextDay)
   await board.save()
@@ -104,6 +144,29 @@ export const addDay = async (inputDateKey) => {
 }
 
 export const ensureTodayDay = async () => addDay(toDateKey())
+
+export const appendNoteToDay = async (dayId, text) => {
+  const board = await getOrCreateBoard()
+  const day = findDay(board, dayId)
+
+  if (!day) {
+    return null
+  }
+
+  const nextText = String(text || '').trim()
+
+  if (!nextText) {
+    return formatBoard(board)
+  }
+
+  const currentNote = String(day.note || '').trim()
+  day.note = currentNote && currentNote !== 'Nova nota do dia.'
+    ? `${currentNote}\n- ${nextText}`
+    : `- ${nextText}`
+
+  await board.save()
+  return formatBoard(board)
+}
 
 export const removeDay = async (dayId) => {
   const board = await getOrCreateBoard()
