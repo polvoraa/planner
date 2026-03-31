@@ -63,6 +63,8 @@ const findLegacyTomorrowDay = (board) => board.days.find((day) => day.id === 'to
 const buildBoardKey = (userId) => `planner:${String(userId || '').trim()}`
 const isPrimarySeedUser = (username) =>
   String(username || '').trim() === String(process.env.AUTH_SEED_USERNAME || '').trim()
+const isLuluUser = (username) =>
+  String(username || '').trim() === String(process.env.AUTH_LULU_USERNAME || '').trim()
 
 const cloneDays = (days = []) =>
   days.map((day) => ({
@@ -80,6 +82,29 @@ const cloneDays = (days = []) =>
       : [],
   }))
 
+const buildLuluDefaultDays = () => [
+  {
+    id: randomUUID(),
+    dateKey: toDateKey(),
+    label: toDayLabel(),
+    date: toDateLabel(),
+    note: [
+      'Prioridades da Lulu para hoje:',
+      '- Revisar pendencias do Nova Studio.',
+      '- Organizar tarefas pessoais sem misturar com o projeto.',
+      '- Fechar os proximos passos mais importantes do dia.',
+    ].join('\n'),
+    tasks: [
+      { id: randomUUID(), text: 'Conferir prioridades do dia.', done: false },
+      { id: randomUUID(), text: 'Atualizar o que esta em andamento.', done: false },
+      { id: randomUUID(), text: 'Separar uma tarefa pessoal importante.', done: false },
+    ],
+  },
+]
+
+const buildInitialDaysForUser = ({ username }) =>
+  isLuluUser(username) ? buildLuluDefaultDays() : cloneDays(defaultDays)
+
 export const getOrCreateBoard = async ({ userId, username }) => {
   const boardKey = buildBoardKey(userId)
   let board = await PlannerBoard.findOne({ key: boardKey })
@@ -94,9 +119,14 @@ export const getOrCreateBoard = async ({ userId, username }) => {
     } else {
       board = await PlannerBoard.create({
         key: boardKey,
-        days: cloneDays(defaultDays),
+        days: buildInitialDaysForUser({ username }),
       })
     }
+  }
+
+  if (!Array.isArray(board.days) || board.days.length === 0) {
+    board.days = buildInitialDaysForUser({ username })
+    await board.save()
   }
 
   return board
