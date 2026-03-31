@@ -153,9 +153,9 @@ app.post('/api/auth/logout', async (request, response, next) => {
   response.json({ authenticated: false })
 })
 
-app.get('/api/days', async (_request, response, next) => {
+app.get('/api/days', requireAuth, async (request, response, next) => {
   try {
-    const data = await listDays()
+    const data = await listDays(request.auth)
     response.json(data)
   } catch (error) {
     next(error)
@@ -338,7 +338,7 @@ app.post('/api/ai/project-command/apply', requireAuth, async (request, response,
   }
 
   try {
-    const data = await applyProjectCommandPreview({ preview: request.body.preview })
+    const data = await applyProjectCommandPreview({ auth: request.auth, preview: request.body.preview })
     response.json(data)
   } catch (error) {
     next(error)
@@ -402,9 +402,9 @@ const handleResponseNotifications = async (request, response, next) => {
 app.get('/api/responses/notify', handleResponseNotifications)
 app.post('/api/responses/notify', handleResponseNotifications)
 
-app.post('/api/days', async (request, response, next) => {
+app.post('/api/days', requireAuth, async (request, response, next) => {
   try {
-    const data = await addDay(request.body?.dateKey)
+    const data = await addDay(request.auth, request.body?.dateKey)
 
     if (data === false) {
       response.status(400).json({ message: 'Data invalida.' })
@@ -417,18 +417,18 @@ app.post('/api/days', async (request, response, next) => {
   }
 })
 
-app.post('/api/days/today', async (_request, response, next) => {
+app.post('/api/days/today', requireAuth, async (request, response, next) => {
   try {
-    const data = await ensureTodayDay()
+    const data = await ensureTodayDay(request.auth)
     response.status(data.created ? 201 : 200).json(data)
   } catch (error) {
     next(error)
   }
 })
 
-app.delete('/api/days/:dayId', async (request, response, next) => {
+app.delete('/api/days/:dayId', requireAuth, async (request, response, next) => {
   try {
-    const data = await removeDay(request.params.dayId)
+    const data = await removeDay(request.auth, request.params.dayId)
 
     if (data === false) {
       response.status(404).json({ message: 'Dia nao encontrado.' })
@@ -441,7 +441,7 @@ app.delete('/api/days/:dayId', async (request, response, next) => {
   }
 })
 
-app.post('/api/days/:dayId/tasks', async (request, response, next) => {
+app.post('/api/days/:dayId/tasks', requireAuth, async (request, response, next) => {
   const text = String(request.body?.text || '').trim()
 
   if (!text) {
@@ -450,7 +450,7 @@ app.post('/api/days/:dayId/tasks', async (request, response, next) => {
   }
 
   try {
-    const data = await addTaskToDay(request.params.dayId, text)
+    const data = await addTaskToDay(request.auth, request.params.dayId, text)
 
     if (!data) {
       response.status(404).json({ message: 'Dia nao encontrado.' })
@@ -463,7 +463,7 @@ app.post('/api/days/:dayId/tasks', async (request, response, next) => {
   }
 })
 
-app.patch('/api/days/:dayId/tasks/:taskId', async (request, response, next) => {
+app.patch('/api/days/:dayId/tasks/:taskId', requireAuth, async (request, response, next) => {
   if (typeof request.body?.done !== 'boolean') {
     response.status(400).json({ message: 'O campo done deve ser booleano.' })
     return
@@ -471,6 +471,7 @@ app.patch('/api/days/:dayId/tasks/:taskId', async (request, response, next) => {
 
   try {
     const data = await updateTaskState(
+      request.auth,
       request.params.dayId,
       request.params.taskId,
       request.body.done,
@@ -492,9 +493,9 @@ app.patch('/api/days/:dayId/tasks/:taskId', async (request, response, next) => {
   }
 })
 
-app.delete('/api/days/:dayId/tasks/:taskId', async (request, response, next) => {
+app.delete('/api/days/:dayId/tasks/:taskId', requireAuth, async (request, response, next) => {
   try {
-    const data = await removeTaskFromDay(request.params.dayId, request.params.taskId)
+    const data = await removeTaskFromDay(request.auth, request.params.dayId, request.params.taskId)
 
     if (data === null) {
       response.status(404).json({ message: 'Dia nao encontrado.' })

@@ -314,7 +314,7 @@ export const generateProjectCommandPreview = async ({ command, currentProjectId 
   return requestGroqPreview({ command: trimmedCommand, currentProjectId })
 }
 
-export const applyProjectCommandPreview = async ({ preview }) => {
+export const applyProjectCommandPreview = async ({ auth, preview }) => {
   const { targetProject, actions } = await sanitizePreviewForApply(preview)
 
   if (!actions.length) {
@@ -356,22 +356,22 @@ export const applyProjectCommandPreview = async ({ preview }) => {
 
     if (action.type === 'daily_task') {
       if (!todayDayId) {
-        const todayPayload = await ensureTodayDay()
+        const todayPayload = await ensureTodayDay(auth)
         todayDayId = todayPayload.dayId
       }
 
-      await appendNoteToDay(todayDayId, action.text)
+      await appendNoteToDay(auth, todayDayId, action.text)
       created.dailyNotes += 1
       continue
     }
 
     if (action.type === 'personal_note') {
       if (!todayDayId) {
-        const todayPayload = await ensureTodayDay()
+        const todayPayload = await ensureTodayDay(auth)
         todayDayId = todayPayload.dayId
       }
 
-      await appendNoteToDay(todayDayId, action.text)
+      await appendNoteToDay(auth, todayDayId, action.text)
       created.dailyNotes += 1
       continue
     }

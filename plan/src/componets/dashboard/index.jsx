@@ -21,7 +21,7 @@ const formatDateKey = (date) => {
   return `${year}-${month}-${day}`
 }
 
-function Dashboard({ onBack }) {
+function Dashboard({ onBack, onLogout, user }) {
   const [days, setDays] = useState([])
   const [selectedDayId, setSelectedDayId] = useState(() => localStorage.getItem(SELECTED_DAY_STORAGE_KEY) || '')
   const [draftTask, setDraftTask] = useState('')
@@ -260,7 +260,17 @@ function Dashboard({ onBack }) {
         <div className="sidebar-brand">
           <span className="eyebrow">Planejamento diario</span>
           <h1>Tarefas por dia</h1>
-          <p>Selecione um dia no menu lateral para abrir a lista correspondente.</p>
+          <p>Selecione um dia no menu lateral para abrir a sua lista correspondente.</p>
+          {user ? (
+            <div className="responses-auth-row">
+              <span className="responses-user-chip">{user.username}</span>
+              {onLogout ? (
+                <button type="button" className="sidebar-ghost-action" onClick={onLogout}>
+                  Sair
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           {onBack ? (
             <button type="button" className="sidebar-ghost-action" onClick={onBack}>
               Voltar ao dashboard

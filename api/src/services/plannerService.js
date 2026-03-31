@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { defaultDays } from '../data/defaultDays.js'
 import { PlannerBoard } from '../models/PlannerBoard.js'
 
-const BOARD_KEY = 'main'
+const LEGACY_BOARD_KEY = 'main'
 const APP_TIMEZONE = String(process.env.APP_TIMEZONE || 'America/Sao_Paulo').trim() || 'America/Sao_Paulo'
 const DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', {
   day: '2-digit',
@@ -60,27 +60,55 @@ const findDay = (board, dayId) => board.days.find((day) => day.id === dayId)
 const findDayByDateKey = (board, dateKey) => board.days.find((day) => day.dateKey === dateKey)
 const findLegacyTodayDay = (board) => board.days.find((day) => day.id === 'today')
 const findLegacyTomorrowDay = (board) => board.days.find((day) => day.id === 'tomorrow')
+const buildBoardKey = (userId) => `planner:${String(userId || '').trim()}`
+const isPrimarySeedUser = (username) =>
+  String(username || '').trim() === String(process.env.AUTH_SEED_USERNAME || '').trim()
 
-export const getOrCreateBoard = async () => {
-  let board = await PlannerBoard.findOne({ key: BOARD_KEY })
+const cloneDays = (days = []) =>
+  days.map((day) => ({
+    id: String(day.id || randomUUID()),
+    dateKey: String(day.dateKey || ''),
+    label: String(day.label || ''),
+    date: String(day.date || ''),
+    note: String(day.note || 'Nova nota do dia.'),
+    tasks: Array.isArray(day.tasks)
+      ? day.tasks.map((task) => ({
+          id: String(task.id || randomUUID()),
+          text: String(task.text || '').trim(),
+          done: Boolean(task.done),
+        }))
+      : [],
+  }))
+
+export const getOrCreateBoard = async ({ userId, username }) => {
+  const boardKey = buildBoardKey(userId)
+  let board = await PlannerBoard.findOne({ key: boardKey })
 
   if (!board) {
-    board = await PlannerBoard.create({
-      key: BOARD_KEY,
-      days: defaultDays,
-    })
+    const legacyBoard = await PlannerBoard.findOne({ key: LEGACY_BOARD_KEY })
+
+    if (legacyBoard && isPrimarySeedUser(username)) {
+      legacyBoard.key = boardKey
+      await legacyBoard.save()
+      board = legacyBoard
+    } else {
+      board = await PlannerBoard.create({
+        key: boardKey,
+        days: cloneDays(defaultDays),
+      })
+    }
   }
 
   return board
 }
 
-export const listDays = async () => {
-  const board = await getOrCreateBoard()
+export const listDays = async (auth) => {
+  const board = await getOrCreateBoard(auth)
   return formatBoard(board)
 }
 
-export const addDay = async (inputDateKey) => {
-  const board = await getOrCreateBoard()
+export const addDay = async (auth, inputDateKey) => {
+  const board = await getOrCreateBoard(auth)
   const date = inputDateKey ? new Date(`${inputDateKey}T12:00:00`) : new Date()
 
   if (Number.isNaN(date.getTime())) {
@@ -143,10 +171,10 @@ export const addDay = async (inputDateKey) => {
   }
 }
 
-export const ensureTodayDay = async () => addDay(toDateKey())
+export const ensureTodayDay = async (auth) => addDay(auth, toDateKey())
 
-export const appendNoteToDay = async (dayId, text) => {
-  const board = await getOrCreateBoard()
+export const appendNoteToDay = async (auth, dayId, text) => {
+  const board = await getOrCreateBoard(auth)
   const day = findDay(board, dayId)
 
   if (!day) {
@@ -168,8 +196,8 @@ export const appendNoteToDay = async (dayId, text) => {
   return formatBoard(board)
 }
 
-export const removeDay = async (dayId) => {
-  const board = await getOrCreateBoard()
+export const removeDay = async (auth, dayId) => {
+  const board = await getOrCreateBoard(auth)
   const nextDays = board.days.filter((day) => day.id !== dayId)
 
   if (nextDays.length === board.days.length) {
@@ -181,8 +209,8 @@ export const removeDay = async (dayId) => {
   return formatBoard(board)
 }
 
-export const addTaskToDay = async (dayId, text) => {
-  const board = await getOrCreateBoard()
+export const addTaskToDay = async (auth, dayId, text) => {
+  const board = await getOrCreateBoard(auth)
   const day = findDay(board, dayId)
 
   if (!day) {
@@ -199,8 +227,8 @@ export const addTaskToDay = async (dayId, text) => {
   return formatBoard(board)
 }
 
-export const updateTaskState = async (dayId, taskId, done) => {
-  const board = await getOrCreateBoard()
+export const updateTaskState = async (auth, dayId, taskId, done) => {
+  const board = await getOrCreateBoard(auth)
   const day = findDay(board, dayId)
 
   if (!day) {
@@ -218,8 +246,8 @@ export const updateTaskState = async (dayId, taskId, done) => {
   return formatBoard(board)
 }
 
-export const removeTaskFromDay = async (dayId, taskId) => {
-  const board = await getOrCreateBoard()
+export const removeTaskFromDay = async (auth, dayId, taskId) => {
+  const board = await getOrCreateBoard(auth)
   const day = findDay(board, dayId)
 
   if (!day) {

@@ -232,27 +232,35 @@ export const requireAuth = async (request, response, next) => {
 }
 
 export const ensureSeedAdmin = async () => {
-  const seedUsername = String(process.env.AUTH_SEED_USERNAME || '').trim()
-  const seedPassword = String(process.env.AUTH_SEED_PASSWORD || '')
-
-  if (!seedUsername || !seedPassword) {
-    return
-  }
-
   const AuthUser = getAuthUserModel()
-  const existingUser = await AuthUser.findOne({ username: seedUsername })
-  const passwordHash = await createPasswordHash(seedPassword)
-
-  if (!existingUser) {
-    await AuthUser.create({
-      username: seedUsername,
-      passwordHash,
+  const seedUsers = [
+    {
+      username: String(process.env.AUTH_SEED_USERNAME || '').trim(),
+      password: String(process.env.AUTH_SEED_PASSWORD || ''),
       role: 'admin',
-    })
-    return
-  }
+    },
+    {
+      username: String(process.env.AUTH_LULU_USERNAME || '').trim(),
+      password: String(process.env.AUTH_LULU_PASSWORD || ''),
+      role: 'admin',
+    },
+  ].filter((user) => user.username && user.password)
 
-  existingUser.passwordHash = passwordHash
-  existingUser.role = 'admin'
-  await existingUser.save()
+  for (const seedUser of seedUsers) {
+    const existingUser = await AuthUser.findOne({ username: seedUser.username })
+    const passwordHash = await createPasswordHash(seedUser.password)
+
+    if (!existingUser) {
+      await AuthUser.create({
+        username: seedUser.username,
+        passwordHash,
+        role: seedUser.role,
+      })
+      continue
+    }
+
+    existingUser.passwordHash = passwordHash
+    existingUser.role = seedUser.role
+    await existingUser.save()
+  }
 }

@@ -101,6 +101,11 @@ function App() {
 
   useEffect(() => {
     const loadPlannerPreview = async () => {
+      if (!authState.authenticated) {
+        setPlannerDays([])
+        return
+      }
+
       try {
         const payload = await fetchDays()
         setPlannerDays(payload.days || [])
@@ -110,7 +115,7 @@ function App() {
     }
 
     loadPlannerPreview()
-  }, [activeView])
+  }, [activeView, authState.authenticated])
 
   useEffect(() => {
     const loadResponsesPreview = async () => {
@@ -206,7 +211,22 @@ function App() {
   if (activeView === 'planner') {
     return (
       <main className="app-shell app-shell-with-dock">
-        <Dashboard onBack={openHome} />
+        {!authState.checked ? (
+          <section className="placeholder-view">
+            <span className="hero-kicker">Autenticacao</span>
+            <h1>Validando sessao...</h1>
+            <p>Aguarde enquanto verificamos se voce ja tem acesso ao planner.</p>
+          </section>
+        ) : authState.authenticated ? (
+          <Dashboard onBack={openHome} user={authState.user} onLogout={handleAuthLogout} />
+        ) : (
+          <LoginGate
+            onAuthenticated={handleAuthenticated}
+            eyebrow="Planner privado"
+            title="Entre para abrir suas tarefas diarias."
+            description="Cada usuario agora tem um planner diario proprio. Projetos e mensagens continuam compartilhados."
+          />
+        )}
         <div className="app-dock">
           <Dock items={dockItems} panelHeight={32} baseItemSize={48} magnification={64} />
         </div>
@@ -317,8 +337,8 @@ function App() {
               Controle diario com notas por data, criacao automatica da nota de hoje e remocao de dias.
             </p>
             <div className="card-stats">
-              <span>{plannerDays.length} dias carregados</span>
-              <span>{pendingTasksLabel(totalTasks, completedTasks)}</span>
+              <span>{authState.authenticated ? `${plannerDays.length} dias carregados` : 'Login necessario'}</span>
+              <span>{authState.authenticated ? pendingTasksLabel(totalTasks, completedTasks) : 'Planner por usuario'}</span>
             </div>
             <button type="button" className="card-action" onClick={() => navigateTo('planner')}>
               Entrar
