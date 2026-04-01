@@ -371,6 +371,131 @@
   margin-top: 0;
 }
 
+.finance-page {
+  align-items: start;
+}
+
+.finance-sidebar,
+.finance-content {
+  align-content: start;
+}
+
+.finance-upload-form {
+  display: grid;
+  gap: 14px;
+}
+
+.finance-metrics {
+  gap: 12px;
+}
+
+.finance-summary-card {
+  align-items: start;
+}
+
+.finance-change-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.finance-mini-card {
+  gap: 10px;
+}
+
+.finance-mini-card pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #b3b3b3;
+  font: 0.88rem/1.5 Consolas, Monaco, monospace;
+}
+
+.finance-table-wrap {
+  overflow: auto;
+  border: 1px solid #2a2a2a;
+  border-radius: 24px;
+  background: rgba(16, 16, 16, 0.94);
+}
+
+.finance-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.finance-table th,
+.finance-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #222222;
+  text-align: left;
+  vertical-align: top;
+}
+
+.finance-table th {
+  position: sticky;
+  top: 0;
+  background: #141414;
+  color: #b3b3b3;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.finance-filter-row th {
+  top: 48px;
+  padding: 10px 12px 14px;
+  background: #121212;
+}
+
+.finance-filter-row input,
+.finance-filter-row select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  background: #1a1a1a;
+  color: #ffffff;
+  font: inherit;
+}
+
+.finance-filter-row input::placeholder {
+  color: #6b6b6b;
+}
+
+.finance-table td strong,
+.finance-import-item strong {
+  display: block;
+  color: #ffffff;
+}
+
+.finance-table td small {
+  display: block;
+  margin-top: 6px;
+  color: #8e8e8e;
+}
+
+.finance-table tbody tr:hover {
+  background: rgba(255, 106, 0, 0.06);
+}
+
+.finance-table tbody tr.is-ignored {
+  opacity: 0.55;
+}
+
+.finance-table .is-negative {
+  color: #ffb1b1;
+}
+
+.finance-table .is-positive {
+  color: #9cf1b8;
+}
+
+.finance-import-item {
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+}
+
 .responses-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 220px;
@@ -787,6 +912,14 @@
 
   .responses-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .finance-change-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .finance-import-item {
+    grid-template-columns: 12px minmax(0, 1fr);
   }
 
   .projects-sidebar,

@@ -42,29 +42,29 @@ const request = async (path: string, init: RequestInit = {}, authenticated = fal
   return parseResponse(response);
 };
 
-export const fetchDays = async () => request('/days');
+export const fetchDays = async () => request('/days', {}, true);
 export const createDay = async (dateKey: string) =>
   request('/days', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ dateKey }),
-  });
-export const openTodayDay = async () => request('/days/today', { method: 'POST' });
-export const deleteDay = async (dayId: string) => request(`/days/${dayId}`, { method: 'DELETE' });
+  }, true);
+export const openTodayDay = async () => request('/days/today', { method: 'POST' }, true);
+export const deleteDay = async (dayId: string) => request(`/days/${dayId}`, { method: 'DELETE' }, true);
 export const createTask = async (dayId: string, text: string) =>
   request(`/days/${dayId}/tasks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
-  });
+  }, true);
 export const updateTask = async (dayId: string, taskId: string, done: boolean) =>
   request(`/days/${dayId}/tasks/${taskId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ done }),
-  });
+  }, true);
 export const deleteTask = async (dayId: string, taskId: string) =>
-  request(`/days/${dayId}/tasks/${taskId}`, { method: 'DELETE' });
+  request(`/days/${dayId}/tasks/${taskId}`, { method: 'DELETE' }, true);
 
 export const mobileLogin = async (username: string, password: string) => {
   const payload = await request('/mobile/auth/login', {

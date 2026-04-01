@@ -110,6 +110,73 @@ export const fetchProjects = async () => {
   return parseResponse(response)
 }
 
+export const fetchFinanceWorkspace = async ({ month } = {}) => {
+  const params = new URLSearchParams()
+
+  if (month) {
+    params.set('month', month)
+  }
+
+  const query = params.toString()
+  const response = await fetch(`${API_BASE_URL}/finance${query ? `?${query}` : ''}`, withCredentials)
+  return parseResponse(response)
+}
+
+export const importFinanceCsv = async ({ filename, csvText, month }) => {
+  const response = await fetch(`${API_BASE_URL}/finance/imports`, {
+    ...withCredentials,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ filename, csvText, month }),
+  })
+
+  return parseResponse(response)
+}
+
+export const deleteFinanceImport = async ({ importId, month }) => {
+  const params = new URLSearchParams()
+
+  if (month) {
+    params.set('month', month)
+  }
+
+  const query = params.toString()
+  const response = await fetch(`${API_BASE_URL}/finance/imports/${importId}${query ? `?${query}` : ''}`, {
+    ...withCredentials,
+    method: 'DELETE',
+  })
+
+  return parseResponse(response)
+}
+
+export const previewFinanceCommand = async ({ command, month }) => {
+  const response = await fetch(`${API_BASE_URL}/finance/command/preview`, {
+    ...withCredentials,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ command, month }),
+  })
+
+  return parseResponse(response)
+}
+
+export const applyFinanceCommand = async (preview) => {
+  const response = await fetch(`${API_BASE_URL}/finance/command/apply`, {
+    ...withCredentials,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ preview }),
+  })
+
+  return parseResponse(response)
+}
+
 export const createProject = async (name) => {
   const response = await fetch(`${API_BASE_URL}/projects`, {
     ...withCredentials,

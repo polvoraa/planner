@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import LoginGate from './components/auth/LoginGate'
 import Dashboard from './componets/dashboard'
 import Dock from './components/dock/Dock'
+import FinanceHub from './components/finance/FinanceHub'
 import ProjectsHub from './components/projects/ProjectsHub'
 import ResponsesHub from './components/responses/ResponsesHub'
 import { fetchDays, fetchResponses, fetchSession } from './lib/plannerApi'
@@ -12,6 +13,7 @@ const routes = {
   planner: '#planner',
   messages: '#messages',
   projects: '#projects',
+  finance: '#finance',
 }
 
 const WorkspaceIcon = ({ path, isHovered, active }) => {
@@ -38,6 +40,7 @@ const iconPaths = {
   planner: 'M8 3v3M16 3v3M4 9h16M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z',
   messages: 'M5 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z',
   projects: 'M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v8A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-10Z',
+  finance: 'M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11ZM8 9h8M8 13h3M15.5 12.5l1 1 2-2',
 }
 
 const getViewFromHash = (hash) => {
@@ -48,6 +51,8 @@ const getViewFromHash = (hash) => {
       return 'messages'
     case routes.projects:
       return 'projects'
+    case routes.finance:
+      return 'finance'
     default:
       return 'home'
   }
@@ -206,6 +211,13 @@ function App() {
       icon: <WorkspaceIcon path={iconPaths.projects} active={activeView === 'projects'} />,
       onClick: () => navigateTo('projects'),
     },
+    {
+      key: 'finance',
+      label: 'Financeiro',
+      isActive: activeView === 'finance',
+      icon: <WorkspaceIcon path={iconPaths.finance} active={activeView === 'finance'} />,
+      onClick: () => navigateTo('finance'),
+    },
   ]
 
   if (activeView === 'planner') {
@@ -277,6 +289,32 @@ function App() {
             eyebrow="Acesso restrito"
             title="Entre para abrir a area de projetos."
             description="Essa area usa a mesma autenticacao da aba de mensagens para liberar tarefas e anotacoes internas."
+          />
+        )}
+        <div className="app-dock">
+          <Dock items={dockItems} panelHeight={32} baseItemSize={48} magnification={64} />
+        </div>
+      </main>
+    )
+  }
+
+  if (activeView === 'finance') {
+    return (
+      <main className="app-shell app-shell-with-dock">
+        {!authState.checked ? (
+          <section className="placeholder-view">
+            <span className="hero-kicker">Autenticacao</span>
+            <h1>Validando sessao...</h1>
+            <p>Aguarde enquanto verificamos se voce ja tem acesso ao financeiro.</p>
+          </section>
+        ) : authState.authenticated ? (
+          <FinanceHub user={authState.user} onBack={openHome} onLogout={handleAuthLogout} />
+        ) : (
+          <LoginGate
+            onAuthenticated={handleAuthenticated}
+            eyebrow="Financeiro restrito"
+            title="Entre para abrir os extratos e ajustes com IA."
+            description="Essa area usa o mesmo sistema de login das demais areas protegidas."
           />
         )}
         <div className="app-dock">
@@ -422,14 +460,16 @@ function App() {
             <div className="card-head">
               <div>
                 <span className="card-kicker">Financeiro</span>
-                <h2>Resumo operacional</h2>
+                <h2>Extratos consolidados</h2>
               </div>
-              <span className="card-tag">Exemplo</span>
+              <span className="card-tag is-live">Novo</span>
             </div>
             <p>
-              Cards de faturamento, metas mensais e alertas de contratos podem entrar aqui quando essa area
-              existir.
+              Importe CSVs de bancos diferentes, consolide os lancamentos e edite a tabela com comandos.
             </p>
+            <button type="button" className="card-action" onClick={() => navigateTo('finance')}>
+              Entrar
+            </button>
           </article>
 
           <article className="dashboard-card">

@@ -40,6 +40,13 @@ import {
   applyProjectCommandPreview,
   generateProjectCommandPreview,
 } from './services/aiService.js'
+import {
+  applyFinanceCommand,
+  importFinanceCsv,
+  listFinanceWorkspace,
+  previewFinanceCommand,
+  removeFinanceImport,
+} from './services/financeService.js'
 
 const app = express()
 const port = Number(process.env.PORT || 4000)
@@ -178,6 +185,89 @@ app.get('/api/responses', requireAuth, async (request, response, next) => {
 app.get('/api/projects', requireAuth, async (_request, response, next) => {
   try {
     const data = await listProjects()
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.get('/api/finance', requireAuth, async (request, response, next) => {
+  try {
+    const data = await listFinanceWorkspace({
+      month: request.query.month,
+    })
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/finance/imports', requireAuth, async (request, response, next) => {
+  const filename = String(request.body?.filename || '').trim()
+  const csvText = String(request.body?.csvText || '')
+  const month = String(request.body?.month || '').trim()
+
+  if (!filename || !csvText) {
+    response.status(400).json({ message: 'Arquivo CSV invalido.' })
+    return
+  }
+
+  try {
+    const data = await importFinanceCsv({
+      filename,
+      csvText,
+      month,
+      auth: request.auth,
+    })
+    response.status(201).json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/finance/command/preview', requireAuth, async (request, response, next) => {
+  const command = String(request.body?.command || '').trim()
+  const month = String(request.body?.month || '').trim()
+
+  if (!command) {
+    response.status(400).json({ message: 'O comando financeiro e obrigatorio.' })
+    return
+  }
+
+  try {
+    const data = await previewFinanceCommand({ command, month })
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/finance/command/apply', requireAuth, async (request, response, next) => {
+  if (!request.body?.preview || typeof request.body.preview !== 'object') {
+    response.status(400).json({ message: 'O preview financeiro e obrigatorio.' })
+    return
+  }
+
+  try {
+    const data = await applyFinanceCommand({ preview: request.body.preview })
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.delete('/api/finance/imports/:importId', requireAuth, async (request, response, next) => {
+  try {
+    const data = await removeFinanceImport({
+      importId: request.params.importId,
+      month: request.query.month,
+    })
+
+    if (data === false) {
+      response.status(404).json({ message: 'Importacao nao encontrada.' })
+      return
+    }
+
     response.json(data)
   } catch (error) {
     next(error)
