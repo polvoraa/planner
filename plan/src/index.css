@@ -1,6 +1,29 @@
-body, html {
+html,
+body {
   margin: 0;
-  /* top: 0;
-  left 0; */
   font-family: Montserrat, sans-serif;
+  min-width: 320px;
+  background: #101010;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+img,
+svg {
+  max-width: 100%;
 }

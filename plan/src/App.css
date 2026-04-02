@@ -1,5 +1,7 @@
 .app-shell {
   min-height: 100svh;
+  width: 100%;
+  overflow-x: clip;
   padding: 28px;
   background:
     radial-gradient(circle at top left, rgba(255, 106, 0, 0.18), transparent 24%),
@@ -9,7 +11,7 @@
 }
 
 .app-shell-with-dock {
-  padding-bottom: 124px;
+  padding-bottom: 132px;
 }
 
 .app-dock {
@@ -21,8 +23,14 @@
   padding: 0 16px;
 }
 
+.app-dock .dock-outer {
+  max-width: min(100%, 740px);
+  margin: 0 auto;
+}
+
 .workspace-home {
   width: min(1240px, 100%);
+  max-width: 100%;
   margin: 0 auto;
   display: grid;
   gap: 24px;
@@ -31,6 +39,7 @@
 
 .placeholder-view {
   width: min(760px, 100%);
+  max-width: 100%;
   margin: 0 auto;
   padding: 32px;
   border: 1px solid #2a2a2a;
@@ -57,6 +66,7 @@
 
 .login-gate {
   width: min(980px, 100%);
+  max-width: 100%;
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
@@ -108,6 +118,7 @@
 
 .responses-page {
   width: min(1240px, 100%);
+  max-width: 100%;
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
@@ -117,6 +128,7 @@
 
 .projects-page {
   width: min(1240px, 100%);
+  max-width: 100%;
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
@@ -132,6 +144,20 @@
 .project-card {
   border: 1px solid #2a2a2a;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.responses-sidebar > *,
+.projects-sidebar > *,
+.responses-toolbar > *,
+.responses-empty-state > *,
+.response-card > *,
+.project-card > *,
+.workspace-hero > *,
+.dashboard-card > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .responses-sidebar {
@@ -162,6 +188,7 @@
 .response-card h2,
 .project-card h2 {
   margin: 12px 0 0;
+  overflow-wrap: anywhere;
 }
 
 .responses-sidebar-copy p,
@@ -172,6 +199,7 @@
 .project-list-item p {
   color: #b3b3b3;
   line-height: 1.65;
+  overflow-wrap: anywhere;
 }
 
 .responses-auth-row {
@@ -202,26 +230,32 @@
   border-radius: 24px;
   background: #1a1a1a;
   border: 1px solid #2a2a2a;
+  min-width: 0;
 }
 
 .responses-metric-card span {
   color: #b3b3b3;
+  overflow-wrap: anywhere;
 }
 
 .responses-metric-card strong {
   display: block;
   margin-top: 8px;
   font-size: 2rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .responses-content {
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .projects-content {
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .project-summary-card {
@@ -314,6 +348,7 @@
   background:
     radial-gradient(circle at top right, rgba(255, 106, 0, 0.08), transparent 30%),
     linear-gradient(180deg, rgba(24, 24, 24, 0.98), rgba(16, 16, 16, 0.99));
+  min-width: 0;
 }
 
 .ai-preview-head,
@@ -328,6 +363,7 @@
 .ai-preview-head strong,
 .ai-preview-item strong {
   display: block;
+  overflow-wrap: anywhere;
 }
 
 .ai-preview-list {
@@ -340,6 +376,7 @@
   border-radius: 18px;
   background: #1a1a1a;
   border: 1px solid #2a2a2a;
+  min-width: 0;
 }
 
 .ai-preview-item p,
@@ -348,11 +385,13 @@
   margin: 6px 0 0;
   color: #b3b3b3;
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .ai-preview-item small {
   margin: 0;
   text-align: right;
+  word-break: break-word;
 }
 
 .ai-preview-warnings {
@@ -378,6 +417,10 @@
 .finance-sidebar,
 .finance-content {
   align-content: start;
+}
+
+.finance-sidebar {
+  min-width: 0;
 }
 
 .finance-upload-form {
@@ -407,6 +450,7 @@
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: anywhere;
   color: #b3b3b3;
   font: 0.88rem/1.5 Consolas, Monaco, monospace;
 }
@@ -416,6 +460,7 @@
   border: 1px solid #2a2a2a;
   border-radius: 24px;
   background: rgba(16, 16, 16, 0.94);
+  -webkit-overflow-scrolling: touch;
 }
 
 .finance-table {
@@ -467,12 +512,14 @@
 .finance-import-item strong {
   display: block;
   color: #ffffff;
+  overflow-wrap: anywhere;
 }
 
 .finance-table td small {
   display: block;
   margin-top: 6px;
   color: #8e8e8e;
+  overflow-wrap: anywhere;
 }
 
 .finance-table tbody tr:hover {
@@ -521,8 +568,10 @@
 }
 
 .responses-field input,
-.responses-field select {
+.responses-field select,
+.responses-field textarea {
   width: 100%;
+  max-width: 100%;
   padding: 14px 16px;
   border: 1px solid #2a2a2a;
   border-radius: 16px;
@@ -542,6 +591,7 @@
   background:
     radial-gradient(circle at bottom right, rgba(255, 106, 0, 0.1), transparent 30%),
     linear-gradient(180deg, rgba(26, 26, 26, 0.98), rgba(15, 15, 15, 0.99));
+  overflow: hidden;
 }
 
 .project-card {
@@ -550,6 +600,7 @@
   background:
     radial-gradient(circle at bottom right, rgba(255, 106, 0, 0.1), transparent 30%),
     linear-gradient(180deg, rgba(26, 26, 26, 0.98), rgba(15, 15, 15, 0.99));
+  overflow: hidden;
 }
 
 .response-card-head,
@@ -564,6 +615,7 @@
 .response-card p {
   margin-bottom: 0;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .response-card.is-unread {
@@ -586,6 +638,7 @@
   border-radius: 20px;
   background: #1a1a1a;
   border: 1px solid #2a2a2a;
+  min-width: 0;
 }
 
 .project-list-bullet {
@@ -627,6 +680,8 @@
 .dashboard-card {
   border: 1px solid #2a2a2a;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .workspace-hero {
@@ -653,6 +708,7 @@
 .hero-copy h1,
 .card-head h2 {
   margin: 10px 0 0;
+  overflow-wrap: anywhere;
 }
 
 .hero-copy h1 {
@@ -667,6 +723,7 @@
 .mini-list {
   color: #b3b3b3;
   line-height: 1.65;
+  overflow-wrap: anywhere;
 }
 
 .hero-actions {
@@ -734,6 +791,8 @@
   display: block;
   margin-top: 8px;
   font-size: 2.4rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .overview-grid,
@@ -780,6 +839,8 @@
   color: #b3b3b3;
   font-size: 0.82rem;
   border: 1px solid #2a2a2a;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .card-tag.is-live {
@@ -864,10 +925,12 @@
 
 .chart-column strong {
   font-size: 1.15rem;
+  overflow-wrap: anywhere;
 }
 
 .chart-column small {
   color: #b3b3b3;
+  overflow-wrap: anywhere;
 }
 
 .mini-list {
@@ -879,20 +942,28 @@
   .login-gate,
   .responses-page,
   .projects-page,
-  .workspace-hero,
+  .workspace-hero {
+    grid-template-columns: 1fr;
+  }
+
   .overview-grid,
   .secondary-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 720px) {
   .app-shell {
-    padding: 16px;
+    padding: 14px;
   }
 
   .app-shell-with-dock {
-    padding-bottom: 112px;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-dock {
+    bottom: max(10px, env(safe-area-inset-bottom, 0px));
+    padding: 0 10px;
   }
 
   .workspace-hero,
@@ -914,12 +985,42 @@
     grid-template-columns: 1fr;
   }
 
+  .responses-page,
+  .projects-page,
+  .finance-page {
+    gap: 16px;
+  }
+
+  .login-gate,
+  .workspace-home,
+  .responses-page,
+  .projects-page,
+  .daily-page {
+    width: 100%;
+  }
+
+  .responses-sidebar,
+  .projects-sidebar,
+  .finance-sidebar {
+    gap: 16px;
+  }
+
+  .responses-metric-grid,
+  .finance-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .finance-change-grid {
     grid-template-columns: 1fr;
   }
 
   .finance-import-item {
-    grid-template-columns: 12px minmax(0, 1fr);
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .finance-sidebar {
+    display: grid;
   }
 
   .projects-sidebar,
@@ -932,8 +1033,40 @@
     font-size: clamp(2.3rem, 11vw, 3.4rem);
   }
 
+  .hero-actions,
+  .card-stats,
+  .response-actions,
+  .response-card-head,
+  .response-meta,
+  .card-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-button,
+  .card-action,
+  .sidebar-ghost-action {
+    width: 100%;
+  }
+
+  .responses-user-chip,
+  .response-status,
+  .card-tag {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .overview-grid,
+  .secondary-grid,
+  .responses-metric-grid,
+  .finance-metrics,
+  .daily-stats {
+    grid-template-columns: 1fr;
+  }
+
   .productivity-chart {
     gap: 10px;
+    min-height: 170px;
   }
 
   .chart-track {
@@ -958,6 +1091,19 @@
   }
 
   .project-note-item {
+    grid-template-columns: 1fr;
+  }
+
+  .finance-table {
+    min-width: 720px;
+  }
+
+  .finance-filter-row input,
+  .finance-filter-row select {
+    min-width: 96px;
+  }
+
+  .project-list-item {
     grid-template-columns: 1fr;
   }
 }

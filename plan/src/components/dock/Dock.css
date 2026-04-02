@@ -26,6 +26,7 @@
     linear-gradient(180deg, rgba(26, 26, 26, 0.96), rgba(15, 15, 15, 0.98));
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.34);
   backdrop-filter: blur(18px);
+  max-width: 100%;
 }
 
 .dock-item {
@@ -82,4 +83,42 @@
   font-size: 0.74rem;
   white-space: nowrap;
   transform: translateX(-50%);
+}
+
+@media (max-width: 720px) {
+  .dock-outer {
+    align-items: stretch;
+    overflow: visible;
+  }
+
+  .dock-panel {
+    position: relative;
+    inset: auto;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    width: 100%;
+    max-width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem;
+    border-radius: 1.2rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .dock-panel::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dock-item {
+    flex: 0 0 auto;
+    border-radius: 16px;
+  }
+
+  .dock-label {
+    display: none;
+  }
 }

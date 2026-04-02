@@ -60,6 +60,7 @@ const getViewFromHash = (hash) => {
 
 function App() {
   const [activeView, setActiveView] = useState(() => getViewFromHash(window.location.hash))
+  const [isCompactDock, setIsCompactDock] = useState(() => window.innerWidth <= 720)
   const [plannerDays, setPlannerDays] = useState([])
   const [responsesSummary, setResponsesSummary] = useState({
     total: 0,
@@ -81,6 +82,17 @@ function App() {
     window.addEventListener('hashchange', syncViewWithHash)
 
     return () => window.removeEventListener('hashchange', syncViewWithHash)
+  }, [])
+
+  useEffect(() => {
+    const syncDockMode = () => {
+      setIsCompactDock(window.innerWidth <= 720)
+    }
+
+    syncDockMode()
+    window.addEventListener('resize', syncDockMode)
+
+    return () => window.removeEventListener('resize', syncDockMode)
   }, [])
 
   useEffect(() => {
@@ -220,6 +232,17 @@ function App() {
     },
   ]
 
+  const dockProps = isCompactDock
+    ? {
+        panelHeight: 58,
+        baseItemSize: 42,
+        magnification: 42,
+        distance: 1,
+        dockHeight: 58,
+        spring: { mass: 0.1, stiffness: 400, damping: 40 },
+      }
+    : { panelHeight: 32, baseItemSize: 48, magnification: 64, distance: 180, dockHeight: 96 }
+
   if (activeView === 'planner') {
     return (
       <main className="app-shell app-shell-with-dock">
@@ -240,7 +263,7 @@ function App() {
           />
         )}
         <div className="app-dock">
-          <Dock items={dockItems} panelHeight={32} baseItemSize={48} magnification={64} />
+          <Dock items={dockItems} {...dockProps} />
         </div>
       </main>
     )
@@ -266,7 +289,7 @@ function App() {
           <LoginGate onAuthenticated={handleAuthenticated} />
         )}
         <div className="app-dock">
-          <Dock items={dockItems} panelHeight={32} baseItemSize={48} magnification={64} />
+          <Dock items={dockItems} {...dockProps} />
         </div>
       </main>
     )
@@ -292,7 +315,7 @@ function App() {
           />
         )}
         <div className="app-dock">
-          <Dock items={dockItems} panelHeight={32} baseItemSize={48} magnification={64} />
+          <Dock items={dockItems} {...dockProps} />
         </div>
       </main>
     )
@@ -318,7 +341,7 @@ function App() {
           />
         )}
         <div className="app-dock">
-          <Dock items={dockItems} panelHeight={32} baseItemSize={48} magnification={64} />
+          <Dock items={dockItems} {...dockProps} />
         </div>
       </main>
     )
@@ -489,7 +512,7 @@ function App() {
         </section>
       </section>
       <div className="app-dock">
-        <Dock items={dockItems} panelHeight={32} baseItemSize={48} magnification={64} />
+        <Dock items={dockItems} {...dockProps} />
       </div>
     </main>
   )
