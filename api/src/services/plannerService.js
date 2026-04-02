@@ -65,6 +65,8 @@ const isPrimarySeedUser = (username) =>
   String(username || '').trim() === String(process.env.AUTH_SEED_USERNAME || '').trim()
 const isLuluUser = (username) =>
   String(username || '').trim() === String(process.env.AUTH_LULU_USERNAME || '').trim()
+const isBetiUser = (username) =>
+  String(username || '').trim() === String(process.env.AUTH_BETI_USERNAME || '').trim()
 
 const cloneDays = (days = []) =>
   days.map((day) => ({
@@ -102,8 +104,53 @@ const buildLuluDefaultDays = () => [
   },
 ]
 
-const buildInitialDaysForUser = ({ username }) =>
-  isLuluUser(username) ? buildLuluDefaultDays() : cloneDays(defaultDays)
+const buildBetiDefaultDays = () => [
+  {
+    id: randomUUID(),
+    dateKey: toDateKey(),
+    label: toDayLabel(),
+    date: toDateLabel(),
+    note: [
+      'Inicio do planner da Beti:',
+      '- Escolher as 3 prioridades principais do dia.',
+      '- Marcar o que ja foi resolvido.',
+      '- Usar este espaco para anotar recados e proximos passos.',
+    ].join('\n'),
+    tasks: [
+      { id: randomUUID(), text: 'Revisar compromissos de hoje.', done: false },
+      { id: randomUUID(), text: 'Separar uma prioridade pessoal importante.', done: false },
+      { id: randomUUID(), text: 'Registrar uma anotacao no planner.', done: false },
+    ],
+  },
+]
+
+const ensureBetiStarterDay = (board, username) => {
+  if (!isBetiUser(username)) {
+    return false
+  }
+
+  const todayDateKey = toDateKey()
+
+  if (findDayByDateKey(board, todayDateKey)) {
+    return false
+  }
+
+  const [starterDay] = buildBetiDefaultDays()
+  board.days.unshift(starterDay)
+  return true
+}
+
+const buildInitialDaysForUser = ({ username }) => {
+  if (isLuluUser(username)) {
+    return buildLuluDefaultDays()
+  }
+
+  if (isBetiUser(username)) {
+    return buildBetiDefaultDays()
+  }
+
+  return cloneDays(defaultDays)
+}
 
 export const getOrCreateBoard = async ({ userId, username }) => {
   const boardKey = buildBoardKey(userId)
@@ -126,6 +173,10 @@ export const getOrCreateBoard = async ({ userId, username }) => {
 
   if (!Array.isArray(board.days) || board.days.length === 0) {
     board.days = buildInitialDaysForUser({ username })
+    await board.save()
+  }
+
+  if (ensureBetiStarterDay(board, username)) {
     await board.save()
   }
 

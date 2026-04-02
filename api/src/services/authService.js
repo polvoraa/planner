@@ -244,6 +244,11 @@ export const ensureSeedAdmin = async () => {
       password: String(process.env.AUTH_LULU_PASSWORD || ''),
       role: 'admin',
     },
+    {
+      username: String(process.env.AUTH_BETI_USERNAME || '').trim(),
+      password: String(process.env.AUTH_BETI_PASSWORD || ''),
+      role: 'admin',
+    },
   ].filter((user) => user.username && user.password)
 
   for (const seedUser of seedUsers) {
