@@ -1,17 +1,25 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   createDay,
+  createProject,
+  createProjectTask,
   createTask,
+  deleteProjectTask,
   deleteDay,
   deleteTask,
   fetchDays,
+  fetchProjects,
   openTodayDay,
+  updateProjectTask,
   updateTask,
 } from '../../lib/plannerApi'
 import './styles.css'
 
 const SELECTED_DAY_STORAGE_KEY = 'planner.selectedDayId'
 const DAY_IN_MS = 24 * 60 * 60 * 1000
+const WORK_DAY_ID = '__work__'
+const WORK_PROJECT_NAME = 'Trabalho'
+const WORK_PROJECT_SLUG = 'trabalho'
 
 const formatDateKey = (date) => {
   const year = date.getFullYear()
@@ -25,6 +33,7 @@ const isValidDateKey = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')
 
 function Dashboard({ onBack, onLogout, user }) {
   const [days, setDays] = useState([])
+  const [workProject, setWorkProject] = useState(null)
   const [selectedDayId, setSelectedDayId] = useState(() => localStorage.getItem(SELECTED_DAY_STORAGE_KEY) || '')
   const [draftTask, setDraftTask] = useState('')
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false)
@@ -33,7 +42,16 @@ function Dashboard({ onBack, onLogout, user }) {
   const [errorMessage, setErrorMessage] = useState('')
 
   const activeDayId = days.find((day) => day.id === selectedDayId)?.id ?? days[0]?.id ?? ''
-  const selectedDay = days.find((day) => day.id === activeDayId) ?? days[0]
+  const isWorkSelected = selectedDayId === WORK_DAY_ID
+  const selectedDay = isWorkSelected
+    ? {
+        id: WORK_DAY_ID,
+        label: 'Trabalho',
+        date: 'Lista fixa',
+        note: 'Lista de tarefas do trabalho, sem separar por dia.',
+        tasks: workProject?.tasks || [],
+      }
+    : days.find((day) => day.id === activeDayId) ?? days[0]
   const completedTasks = selectedDay?.tasks.filter((task) => task.done).length ?? 0
   const pendingTasks = (selectedDay?.tasks.length ?? 0) - completedTasks
 
@@ -45,23 +63,46 @@ function Dashboard({ onBack, onLogout, user }) {
         return currentSelectedDayId
       }
 
+      if (currentSelectedDayId === WORK_DAY_ID) {
+        return WORK_DAY_ID
+      }
+
       return nextDays[0]?.id || ''
     })
   }, [])
+
+  const syncWorkProject = useCallback((payload) => {
+    const nextProjects = payload.workspace?.projects || payload.projects || []
+    const nextWorkProject = nextProjects.find((project) => project.slug === WORK_PROJECT_SLUG) || null
+    setWorkProject(nextWorkProject)
+    return nextWorkProject
+  }, [])
+
+  const ensureWorkProject = useCallback(async () => {
+    const payload = await fetchProjects()
+    const existingWorkProject = syncWorkProject(payload)
+
+    if (existingWorkProject) {
+      return existingWorkProject
+    }
+
+    const createdPayload = await createProject(WORK_PROJECT_NAME)
+    return syncWorkProject(createdPayload)
+  }, [syncWorkProject])
 
   const loadPlanner = useCallback(async () => {
     setIsLoading(true)
     setErrorMessage('')
 
     try {
-      const payload = await fetchDays()
-      syncDays(payload)
+      const [daysPayload] = await Promise.all([fetchDays(), ensureWorkProject()])
+      syncDays(daysPayload)
     } catch (error) {
       setErrorMessage(error.message)
     } finally {
       setIsLoading(false)
     }
-  }, [syncDays])
+  }, [ensureWorkProject, syncDays])
 
   const runMutation = async (operation) => {
     setIsSaving(true)
@@ -107,7 +148,28 @@ function Dashboard({ onBack, onLogout, user }) {
   const addTask = async () => {
     const taskName = draftTask.trim()
 
-    if (!taskName || !activeDayId) {
+    if (!taskName || (!activeDayId && !isWorkSelected)) {
+      return
+    }
+
+    if (isWorkSelected) {
+      if (!workProject?.id) {
+        return
+      }
+
+      setIsSaving(true)
+      setErrorMessage('')
+
+      try {
+        const payload = await createProjectTask(workProject.id, taskName)
+        syncWorkProject(payload)
+        setDraftTask('')
+      } catch (error) {
+        setErrorMessage(error.message)
+      } finally {
+        setIsSaving(false)
+      }
+
       return
     }
 
@@ -124,6 +186,26 @@ function Dashboard({ onBack, onLogout, user }) {
   }
 
   const toggleTask = async (taskId, done) => {
+    if (isWorkSelected) {
+      if (!workProject?.id) {
+        return
+      }
+
+      setIsSaving(true)
+      setErrorMessage('')
+
+      try {
+        const payload = await updateProjectTask(workProject.id, taskId, done)
+        syncWorkProject(payload)
+      } catch (error) {
+        setErrorMessage(error.message)
+      } finally {
+        setIsSaving(false)
+      }
+
+      return
+    }
+
     if (!activeDayId) {
       return
     }
@@ -136,10 +218,15 @@ function Dashboard({ onBack, onLogout, user }) {
   }, [loadPlanner])
 
   useEffect(() => {
+    if (selectedDayId === WORK_DAY_ID) {
+      localStorage.setItem(SELECTED_DAY_STORAGE_KEY, WORK_DAY_ID)
+      return
+    }
+
     if (activeDayId) {
       localStorage.setItem(SELECTED_DAY_STORAGE_KEY, activeDayId)
     }
-  }, [activeDayId])
+  }, [activeDayId, selectedDayId])
 
   useEffect(() => {
     const handleResize = () => {
@@ -187,7 +274,7 @@ function Dashboard({ onBack, onLogout, user }) {
   }
 
   const handleRemoveDay = async () => {
-    if (!activeDayId) {
+    if (!activeDayId || isWorkSelected) {
       return
     }
 
@@ -195,6 +282,26 @@ function Dashboard({ onBack, onLogout, user }) {
   }
 
   const removeTask = async (taskId) => {
+    if (isWorkSelected) {
+      if (!workProject?.id) {
+        return
+      }
+
+      setIsSaving(true)
+      setErrorMessage('')
+
+      try {
+        const payload = await deleteProjectTask(workProject.id, taskId)
+        syncWorkProject(payload)
+      } catch (error) {
+        setErrorMessage(error.message)
+      } finally {
+        setIsSaving(false)
+      }
+
+      return
+    }
+
     if (!activeDayId) {
       return
     }
@@ -236,7 +343,7 @@ function Dashboard({ onBack, onLogout, user }) {
   const selectedDaySummary = (
     <header className="daily-header">
       <div>
-        <span className="eyebrow">Dia selecionado</span>
+        <span className="eyebrow">{isWorkSelected ? 'Lista selecionada' : 'Dia selecionado'}</span>
         <h2>{selectedDay.label}</h2>
         <p>{selectedDay.note}</p>
       </div>
@@ -288,6 +395,18 @@ function Dashboard({ onBack, onLogout, user }) {
         </div>
 
         <nav className="day-nav" aria-label="Dias da semana">
+          <button
+            type="button"
+            className={`day-link ${isWorkSelected ? 'is-active' : ''}`}
+            onClick={() => handleDaySelect(WORK_DAY_ID)}
+          >
+            <div>
+              <strong>Trabalho</strong>
+              <span>Lista fixa</span>
+            </div>
+            <small>{workProject?.tasks.length || 0} tarefas</small>
+          </button>
+
           {days.map((day) => {
             const doneCount = day.tasks.filter((task) => task.done).length
 
@@ -354,6 +473,18 @@ function Dashboard({ onBack, onLogout, user }) {
           {selectedDaySummary}
 
           <nav className="day-nav mobile-day-nav" aria-label="Dias da semana">
+            <button
+              type="button"
+              className={`day-link ${isWorkSelected ? 'is-active' : ''}`}
+              onClick={() => handleDaySelect(WORK_DAY_ID)}
+            >
+              <div>
+                <strong>Trabalho</strong>
+                <span>Lista fixa</span>
+              </div>
+              <small>{workProject?.tasks.length || 0} tarefas</small>
+            </button>
+
             {days.map((day) => {
               const doneCount = day.tasks.filter((task) => task.done).length
 
@@ -388,7 +519,7 @@ function Dashboard({ onBack, onLogout, user }) {
 
           <div className="panel-heading">
             <div>
-              <span className="eyebrow">Lista do dia</span>
+              <span className="eyebrow">{isWorkSelected ? 'Lista de tarefas' : 'Lista do dia'}</span>
               <h3>{selectedDay.date}</h3>
             </div>
 
@@ -396,10 +527,10 @@ function Dashboard({ onBack, onLogout, user }) {
               <button
                 type="button"
                 className="day-delete-button"
-                disabled={isSaving}
+                disabled={isSaving || isWorkSelected}
                 onClick={handleRemoveDay}
               >
-                Remover dia
+                {isWorkSelected ? 'Lista fixa' : 'Remover dia'}
               </button>
 
               <button
