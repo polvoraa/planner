@@ -21,6 +21,8 @@ const formatDateKey = (date) => {
   return `${year}-${month}-${day}`
 }
 
+const isValidDateKey = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))
+
 function Dashboard({ onBack, onLogout, user }) {
   const [days, setDays] = useState([])
   const [selectedDayId, setSelectedDayId] = useState(() => localStorage.getItem(SELECTED_DAY_STORAGE_KEY) || '')
@@ -167,14 +169,12 @@ function Dashboard({ onBack, onLogout, user }) {
   }
 
   const handleAddDay = async () => {
-    const datedDays = days
+    const latestDateKey = days
       .map((day) => day.dateKey)
-      .filter(Boolean)
-      .map((dateKey) => new Date(`${dateKey}T12:00:00`))
-      .filter((date) => !Number.isNaN(date.getTime()))
-      .sort((left, right) => right.getTime() - left.getTime())
+      .filter(isValidDateKey)
+      .sort((left, right) => right.localeCompare(left))[0]
 
-    const baseDate = datedDays[0] || new Date()
+    const baseDate = latestDateKey ? new Date(`${latestDateKey}T12:00:00`) : new Date()
     const nextDateKey = formatDateKey(new Date(baseDate.getTime() + DAY_IN_MS))
 
     const payload = await runBoardMutation(() => createDay(nextDateKey), {

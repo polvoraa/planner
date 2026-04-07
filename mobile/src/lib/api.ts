@@ -153,6 +153,32 @@ export const createProjectNote = async (projectId: string, text: string) =>
   );
 export const deleteProjectNote = async (projectId: string, noteId: string) =>
   request(`/projects/${projectId}/notes/${noteId}`, { method: 'DELETE' }, true);
+export const previewProjectAiCommand = async ({
+  command,
+  currentProjectId,
+}: {
+  command: string;
+  currentProjectId: string;
+}) =>
+  request(
+    '/ai/project-command/preview',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command, currentProjectId }),
+    },
+    true,
+  );
+export const applyProjectAiCommand = async (preview: unknown) =>
+  request(
+    '/ai/project-command/apply',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preview }),
+    },
+    true,
+  );
 export const markResponsesRead = async (ids: string[], read = true) =>
   request(
     '/responses/read',
@@ -160,6 +186,62 @@ export const markResponsesRead = async (ids: string[], read = true) =>
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids, read }),
+    },
+    true,
+  );
+export const fetchFinanceWorkspace = async ({ month = '' }: { month?: string } = {}) => {
+  const params = new URLSearchParams();
+  if (month) params.set('month', month);
+  const query = params.toString();
+  return request(`/finance${query ? `?${query}` : ''}`, {}, true);
+};
+export const importFinanceCsv = async ({
+  filename,
+  csvText,
+  month,
+}: {
+  filename: string;
+  csvText: string;
+  month: string;
+}) =>
+  request(
+    '/finance/imports',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, csvText, month }),
+    },
+    true,
+  );
+export const deleteFinanceImport = async ({
+  importId,
+  month = '',
+}: {
+  importId: string;
+  month?: string;
+}) => {
+  const params = new URLSearchParams();
+  if (month) params.set('month', month);
+  const query = params.toString();
+  return request(`/finance/imports/${importId}${query ? `?${query}` : ''}`, { method: 'DELETE' }, true);
+};
+export const previewFinanceCommand = async ({ command, month }: { command: string; month: string }) =>
+  request(
+    '/finance/command/preview',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command, month }),
+    },
+    true,
+  );
+export const applyFinanceCommand = async (preview: unknown) =>
+  request(
+    '/finance/command/apply',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preview }),
     },
     true,
   );

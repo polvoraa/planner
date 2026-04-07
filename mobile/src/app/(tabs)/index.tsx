@@ -168,6 +168,23 @@ export default function HomeScreen() {
             <Text style={styles.primaryButtonLabel}>Entrar</Text>
           </Pressable>
         </Card>
+
+        <Card style={styles.quickCard}>
+          <Text style={styles.kicker}>Financeiro</Text>
+          <Text style={styles.cardTitle}>Extratos consolidados</Text>
+          <Text style={styles.cardDescription}>
+            Importe CSVs de bancos diferentes, consolide os lancamentos e edite a tabela com comandos.
+          </Text>
+          <View style={styles.inlineStats}>
+            <Text style={styles.pill}>Resumo mensal</Text>
+            <Text style={styles.pill}>Comando com IA</Text>
+          </View>
+          <Pressable
+            style={[styles.button, styles.primaryButton]}
+            onPress={() => router.push('/(tabs)/finance' as any)}>
+            <Text style={styles.primaryButtonLabel}>Entrar</Text>
+          </Pressable>
+        </Card>
       </View>
 
       <Card style={styles.productivityCard}>
@@ -186,7 +203,7 @@ export default function HomeScreen() {
               <View key={`${day.id || day.label}-${index}`} style={styles.chartColumn}>
                 <View style={styles.chartTrack}>
                   <View style={[styles.chartBarGlow, { height: `${Math.min(height + 14, 100)}%` }]}>
-                    <CardGlow color="#FFB066" height={120} opacity={0.55} width={64} />
+                    <CardGlow color="#D85C00" height={120} opacity={0.4} width={64} />
                   </View>
                   <View style={[styles.chartBar, { height: `${height}%` }]} />
                 </View>
@@ -208,9 +225,9 @@ export default function HomeScreen() {
         </Card>
         <Card style={styles.smallCard}>
           <Text style={styles.kicker}>Financeiro</Text>
-          <Text style={styles.cardTitle}>Resumo operacional</Text>
+          <Text style={styles.cardTitle}>Extratos consolidados</Text>
           <Text style={styles.cardDescription}>
-            Quando essa area existir, o mobile ja tem um lugar claro para metas, faturamento e alertas.
+            Importacao mensal, filtros, historico de arquivos e ajustes com IA no mesmo fluxo da web.
           </Text>
         </Card>
         <Card style={styles.smallCard}>

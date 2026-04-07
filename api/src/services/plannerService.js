@@ -58,8 +58,6 @@ const formatBoard = (board) => ({
 
 const findDay = (board, dayId) => board.days.find((day) => day.id === dayId)
 const findDayByDateKey = (board, dateKey) => board.days.find((day) => day.dateKey === dateKey)
-const findLegacyTodayDay = (board) => board.days.find((day) => day.id === 'today')
-const findLegacyTomorrowDay = (board) => board.days.find((day) => day.id === 'tomorrow')
 const buildBoardKey = (userId) => `planner:${String(userId || '').trim()}`
 const isPrimarySeedUser = (username) =>
   String(username || '').trim() === String(process.env.AUTH_SEED_USERNAME || '').trim()
@@ -83,6 +81,43 @@ const cloneDays = (days = []) =>
         }))
       : [],
   }))
+
+const LEGACY_DAY_IDS = new Set(['today', 'tomorrow', 'monday', 'tuesday'])
+
+const buildDateFromOffset = (offset = 0) => {
+  const date = new Date()
+  date.setDate(date.getDate() + offset)
+  return date
+}
+
+const normalizeLegacyBoardDays = (board) => {
+  if (!Array.isArray(board.days) || board.days.length === 0) {
+    return false
+  }
+
+  const hasLegacyShape = board.days.some((day) => {
+    const id = String(day?.id || '').trim()
+    return LEGACY_DAY_IDS.has(id) || !String(day?.dateKey || '').trim()
+  })
+
+  if (!hasLegacyShape) {
+    return false
+  }
+
+  board.days = board.days.map((day, index) => {
+    const nextDate = buildDateFromOffset(index)
+
+    return {
+      ...day,
+      id: randomUUID(),
+      dateKey: toDateKey(nextDate),
+      label: toDayLabel(nextDate),
+      date: toDateLabel(nextDate),
+    }
+  })
+
+  return true
+}
 
 const buildLuluDefaultDays = () => [
   {
@@ -176,6 +211,10 @@ export const getOrCreateBoard = async ({ userId, username }) => {
     await board.save()
   }
 
+  if (normalizeLegacyBoardDays(board)) {
+    await board.save()
+  }
+
   if (ensureBetiStarterDay(board, username)) {
     await board.save()
   }
@@ -203,40 +242,6 @@ export const addDay = async (auth, inputDateKey) => {
     return {
       board: formatBoard(board),
       dayId: existingDay.id,
-      created: false,
-    }
-  }
-
-  const todayDateKey = toDateKey()
-  const legacyTodayDay = dateKey === todayDateKey ? findLegacyTodayDay(board) : null
-
-  if (legacyTodayDay) {
-    legacyTodayDay.dateKey = todayDateKey
-    legacyTodayDay.label = toDayLabel(date)
-    legacyTodayDay.date = toDateLabel(date)
-    await board.save()
-
-    return {
-      board: formatBoard(board),
-      dayId: legacyTodayDay.id,
-      created: false,
-    }
-  }
-
-  const tomorrowDate = new Date()
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
-  const tomorrowDateKey = toDateKey(tomorrowDate)
-  const legacyTomorrowDay = dateKey === tomorrowDateKey ? findLegacyTomorrowDay(board) : null
-
-  if (legacyTomorrowDay) {
-    legacyTomorrowDay.dateKey = tomorrowDateKey
-    legacyTomorrowDay.label = toDayLabel(date)
-    legacyTomorrowDay.date = toDateLabel(date)
-    await board.save()
-
-    return {
-      board: formatBoard(board),
-      dayId: legacyTomorrowDay.id,
       created: false,
     }
   }

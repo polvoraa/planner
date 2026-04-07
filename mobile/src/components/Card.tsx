@@ -15,8 +15,8 @@ export function Card({
           <Defs>
             <RadialGradient id="card-base-glow" cx="50%" cy="50%" rx="50%" ry="50%" fx="72%" fy="22%">
               <Stop offset="0%" stopColor="#D85C00" stopOpacity="0.62" />
-              <Stop offset="36%" stopColor="#D85C00" stopOpacity="0.24" />
-              <Stop offset="72%" stopColor="#D85C00" stopOpacity="0.08" />
+              <Stop offset="34%" stopColor="#D85C00" stopOpacity="0.22" />
+              <Stop offset="68%" stopColor="#D85C00" stopOpacity="0.07" />
               <Stop offset="100%" stopColor="#D85C00" stopOpacity="0" />
             </RadialGradient>
           </Defs>
@@ -32,12 +32,12 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 28,
     padding: 22,
-    backgroundColor: palette.panel,
+    backgroundColor: palette.panelElevated,
     borderWidth: 1,
     borderColor: palette.border,
     shadowColor: '#000000',
     shadowOpacity: 0.28,
-    shadowRadius: 24,
+    shadowRadius: 28,
     shadowOffset: { width: 0, height: 16 },
     elevation: 12,
     gap: 8,
@@ -45,8 +45,8 @@ const styles = StyleSheet.create({
   },
   glowWrap: {
     position: 'absolute',
-    top: -54,
-    right: -58,
+    top: -62,
+    right: -64,
     width: 220,
     height: 220,
   },
