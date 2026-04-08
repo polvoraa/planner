@@ -1,23 +1,28 @@
 import { useEffect, useState } from 'react'
 import LoginGate from './components/auth/LoginGate'
+import AssistantHub from './components/assistant/AssistantHub'
 import Dashboard from './componets/dashboard'
 import Dock from './components/dock/Dock'
 import FinanceHub from './components/finance/FinanceHub'
 import ProjectsHub from './components/projects/ProjectsHub'
 import ResponsesHub from './components/responses/ResponsesHub'
+import SettingsHub from './components/settings/SettingsHub'
 import { fetchDays, fetchResponses, fetchSession } from './lib/plannerApi'
 import './App.css'
 
+const THEME_STORAGE_KEY = 'planner.theme'
 const routes = {
   home: '',
   planner: '#planner',
   messages: '#messages',
   projects: '#projects',
   finance: '#finance',
+  assistant: '#assistant',
+  settings: '#settings',
 }
 
 const WorkspaceIcon = ({ path, isHovered, active }) => {
-  const stroke = active ? '#ffb15e' : '#eef4ff'
+  const stroke = active ? 'var(--color-accent-soft)' : 'var(--color-text)'
   const scale = isHovered ? 1.06 : 1
 
   return (
@@ -41,6 +46,8 @@ const iconPaths = {
   messages: 'M5 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z',
   projects: 'M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v8A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5v-10Z',
   finance: 'M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11ZM8 9h8M8 13h3M15.5 12.5l1 1 2-2',
+  assistant: 'M12 4a8 8 0 1 1 0 16a8 8 0 0 1 0-16Zm0 3.25a2.25 2.25 0 0 0-2.25 2.25M12 15.5h.01M11.95 12.2c0-1.15 1.8-1.43 1.8-3.2a1.75 1.75 0 1 0-3.5 0',
+  settings: 'M12 3.75l1.12 2.27 2.5.36-1.81 1.76.43 2.49L12 9.45l-2.24 1.18.43-2.49-1.81-1.76 2.5-.36L12 3.75Zm0 10a2.25 2.25 0 1 0 0 4.5a2.25 2.25 0 0 0 0-4.5Z',
 }
 
 const getViewFromHash = (hash) => {
@@ -53,6 +60,10 @@ const getViewFromHash = (hash) => {
       return 'projects'
     case routes.finance:
       return 'finance'
+    case routes.assistant:
+      return 'assistant'
+    case routes.settings:
+      return 'settings'
     default:
       return 'home'
   }
@@ -61,6 +72,7 @@ const getViewFromHash = (hash) => {
 function App() {
   const [activeView, setActiveView] = useState(() => getViewFromHash(window.location.hash))
   const [isCompactDock, setIsCompactDock] = useState(() => window.innerWidth <= 720)
+  const [theme, setTheme] = useState(() => localStorage.getItem(THEME_STORAGE_KEY) || 'ember')
   const [plannerDays, setPlannerDays] = useState([])
   const [responsesSummary, setResponsesSummary] = useState({
     total: 0,
@@ -94,6 +106,11 @@ function App() {
 
     return () => window.removeEventListener('resize', syncDockMode)
   }, [])
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem(THEME_STORAGE_KEY, theme)
+  }, [theme])
 
   useEffect(() => {
     const loadSession = async () => {
@@ -230,6 +247,13 @@ function App() {
       icon: <WorkspaceIcon path={iconPaths.finance} active={activeView === 'finance'} />,
       onClick: () => navigateTo('finance'),
     },
+    {
+      key: 'settings',
+      label: 'Config',
+      isActive: activeView === 'settings',
+      icon: <WorkspaceIcon path={iconPaths.settings} active={activeView === 'settings'} />,
+      onClick: () => navigateTo('settings'),
+    },
   ]
 
   const dockProps = isCompactDock
@@ -338,6 +362,65 @@ function App() {
             eyebrow="Financeiro restrito"
             title="Entre para abrir os extratos e ajustes com IA."
             description="Essa area usa o mesmo sistema de login das demais areas protegidas."
+          />
+        )}
+        <div className="app-dock">
+          <Dock items={dockItems} {...dockProps} />
+        </div>
+      </main>
+    )
+  }
+
+  if (activeView === 'assistant') {
+    return (
+      <main className="app-shell app-shell-with-dock">
+        {!authState.checked ? (
+          <section className="placeholder-view">
+            <span className="hero-kicker">Autenticacao</span>
+            <h1>Validando sessao...</h1>
+            <p>Aguarde enquanto verificamos se voce ja tem acesso ao assistente.</p>
+          </section>
+        ) : authState.authenticated ? (
+          <AssistantHub user={authState.user} onBack={openHome} onLogout={handleAuthLogout} />
+        ) : (
+          <LoginGate
+            onAuthenticated={handleAuthenticated}
+            eyebrow="Assistente restrito"
+            title="Entre para abrir a analise com IA."
+            description="Essa area consulta planner, projetos, mensagens e financeiro em uma visao consolidada."
+          />
+        )}
+        <div className="app-dock">
+          <Dock items={dockItems} {...dockProps} />
+        </div>
+      </main>
+    )
+  }
+
+  if (activeView === 'settings') {
+    return (
+      <main className="app-shell app-shell-with-dock">
+        {!authState.checked ? (
+          <section className="placeholder-view">
+            <span className="hero-kicker">Autenticacao</span>
+            <h1>Validando sessao...</h1>
+            <p>Aguarde enquanto verificamos se voce ja tem acesso as configuracoes.</p>
+          </section>
+        ) : authState.authenticated ? (
+          <SettingsHub
+            user={authState.user}
+            onBack={openHome}
+            onLogout={handleAuthLogout}
+            activeTheme={theme}
+            onThemeChange={setTheme}
+            onOpenAssistant={() => navigateTo('assistant')}
+          />
+        ) : (
+          <LoginGate
+            onAuthenticated={handleAuthenticated}
+            eyebrow="Configuracoes privadas"
+            title="Entre para abrir preferencias e atalhos do app."
+            description="As configuracoes ficam protegidas junto com o restante do workspace."
           />
         )}
         <div className="app-dock">
@@ -498,16 +581,15 @@ function App() {
           <article className="dashboard-card">
             <div className="card-head">
               <div>
-                <span className="card-kicker">Agenda</span>
-                <h2>Proximos checkpoints</h2>
+                <span className="card-kicker">Configuracoes</span>
+                <h2>Tema e assistente</h2>
               </div>
-              <span className="card-tag">Exemplo</span>
+              <span className="card-tag is-live">Novo</span>
             </div>
-            <ul className="mini-list">
-              <li>Review semanal do planner</li>
-              <li>Consolidacao do hub de mensagens</li>
-              <li>Primeira versao do painel de produtividade</li>
-            </ul>
+            <p>Troque a cor do app, abra o assistente analitico e concentre funcoes globais do workspace.</p>
+            <button type="button" className="card-action" onClick={() => navigateTo('settings')}>
+              Entrar
+            </button>
           </article>
         </section>
       </section>

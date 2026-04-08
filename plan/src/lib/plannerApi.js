@@ -164,6 +164,25 @@ export const fetchFinanceWorkspace = async ({ month } = {}) => {
   return parseResponse(response)
 }
 
+export const fetchAssistantContext = async () => {
+  const response = await fetch(`${API_BASE_URL}/assistant/context`, createRequestOptions())
+  return parseResponse(response)
+}
+
+export const analyzeWithAssistant = async ({ question }) => {
+  const response = await fetch(`${API_BASE_URL}/assistant/analyze`, {
+    ...createRequestOptions({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ question }),
+    }),
+  })
+
+  return parseResponse(response)
+}
+
 export const importFinanceCsv = async ({ filename, csvText, month }) => {
   const response = await fetch(`${API_BASE_URL}/finance/imports`, {
     ...createRequestOptions({

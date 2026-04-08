@@ -40,6 +40,7 @@ import {
   applyProjectCommandPreview,
   generateProjectCommandPreview,
 } from './services/aiService.js'
+import { askWorkspaceAssistant, listAssistantContext } from './services/assistantService.js'
 import {
   applyFinanceCommand,
   importFinanceCsv,
@@ -196,6 +197,31 @@ app.get('/api/finance', requireAuth, async (request, response, next) => {
     const data = await listFinanceWorkspace({
       month: request.query.month,
     })
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.get('/api/assistant/context', requireAuth, async (request, response, next) => {
+  try {
+    const data = await listAssistantContext({ auth: request.auth })
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/assistant/analyze', requireAuth, async (request, response, next) => {
+  const question = String(request.body?.question || '').trim()
+
+  if (!question) {
+    response.status(400).json({ message: 'A pergunta para o assistente e obrigatoria.' })
+    return
+  }
+
+  try {
+    const data = await askWorkspaceAssistant({ auth: request.auth, question })
     response.json(data)
   } catch (error) {
     next(error)
