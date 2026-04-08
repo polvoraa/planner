@@ -30,11 +30,15 @@ import {
   addProject,
   addProjectNote,
   addProjectTask,
+  addPersonalWorkTask,
   listProjects,
+  listPersonalWorkProject,
   removeProject,
   removeProjectNote,
   removeProjectTask,
+  removePersonalWorkTask,
   updateProjectTaskState,
+  updatePersonalWorkTaskState,
 } from './services/projectService.js'
 import {
   applyProjectCommandPreview,
@@ -186,6 +190,70 @@ app.get('/api/responses', requireAuth, async (request, response, next) => {
 app.get('/api/projects', requireAuth, async (_request, response, next) => {
   try {
     const data = await listProjects()
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.get('/api/work-project', requireAuth, async (request, response, next) => {
+  try {
+    const data = await listPersonalWorkProject(request.auth)
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/work-project/tasks', requireAuth, async (request, response, next) => {
+  const text = String(request.body?.text || '').trim()
+
+  if (!text) {
+    response.status(400).json({ message: 'O texto da tarefa e obrigatorio.' })
+    return
+  }
+
+  try {
+    const data = await addPersonalWorkTask(request.auth, text)
+    response.status(201).json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.patch('/api/work-project/tasks/:taskId', requireAuth, async (request, response, next) => {
+  if (typeof request.body?.done !== 'boolean') {
+    response.status(400).json({ message: 'O campo done deve ser booleano.' })
+    return
+  }
+
+  try {
+    const data = await updatePersonalWorkTaskState(
+      request.auth,
+      request.params.taskId,
+      request.body.done,
+    )
+
+    if (data === false) {
+      response.status(404).json({ message: 'Tarefa nao encontrada.' })
+      return
+    }
+
+    response.json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.delete('/api/work-project/tasks/:taskId', requireAuth, async (request, response, next) => {
+  try {
+    const data = await removePersonalWorkTask(request.auth, request.params.taskId)
+
+    if (data === false) {
+      response.status(404).json({ message: 'Tarefa nao encontrada.' })
+      return
+    }
+
     response.json(data)
   } catch (error) {
     next(error)

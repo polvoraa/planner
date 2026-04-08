@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   createDay,
-  createProject,
-  createProjectTask,
   createTask,
-  deleteProjectTask,
+  createWorkTask,
   deleteDay,
   deleteTask,
   fetchDays,
-  fetchProjects,
+  fetchWorkProject,
+  deleteWorkTask,
   openTodayDay,
-  updateProjectTask,
+  updateWorkTask,
   updateTask,
 } from '../../lib/plannerApi'
 import './styles.css'
@@ -18,7 +17,6 @@ import './styles.css'
 const SELECTED_DAY_STORAGE_KEY = 'planner.selectedDayId'
 const DAY_IN_MS = 24 * 60 * 60 * 1000
 const WORK_DAY_ID = '__work__'
-const WORK_PROJECT_NAME = 'Trabalho'
 const WORK_PROJECT_SLUG = 'trabalho'
 
 const formatDateKey = (date) => {
@@ -79,15 +77,8 @@ function Dashboard({ onBack, onLogout, user }) {
   }, [])
 
   const ensureWorkProject = useCallback(async () => {
-    const payload = await fetchProjects()
-    const existingWorkProject = syncWorkProject(payload)
-
-    if (existingWorkProject) {
-      return existingWorkProject
-    }
-
-    const createdPayload = await createProject(WORK_PROJECT_NAME)
-    return syncWorkProject(createdPayload)
+    const payload = await fetchWorkProject()
+    return syncWorkProject(payload)
   }, [syncWorkProject])
 
   const loadPlanner = useCallback(async () => {
@@ -161,7 +152,7 @@ function Dashboard({ onBack, onLogout, user }) {
       setErrorMessage('')
 
       try {
-        const payload = await createProjectTask(workProject.id, taskName)
+        const payload = await createWorkTask(taskName)
         syncWorkProject(payload)
         setDraftTask('')
       } catch (error) {
@@ -195,7 +186,7 @@ function Dashboard({ onBack, onLogout, user }) {
       setErrorMessage('')
 
       try {
-        const payload = await updateProjectTask(workProject.id, taskId, done)
+        const payload = await updateWorkTask(taskId, done)
         syncWorkProject(payload)
       } catch (error) {
         setErrorMessage(error.message)
@@ -291,7 +282,7 @@ function Dashboard({ onBack, onLogout, user }) {
       setErrorMessage('')
 
       try {
-        const payload = await deleteProjectTask(workProject.id, taskId)
+        const payload = await deleteWorkTask(taskId)
         syncWorkProject(payload)
       } catch (error) {
         setErrorMessage(error.message)

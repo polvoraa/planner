@@ -152,6 +152,49 @@ export const fetchProjects = async () => {
   return parseResponse(response)
 }
 
+export const fetchWorkProject = async () => {
+  const response = await fetch(`${API_BASE_URL}/work-project`, createRequestOptions())
+  return parseResponse(response)
+}
+
+export const createWorkTask = async (text) => {
+  const response = await fetch(`${API_BASE_URL}/work-project/tasks`, {
+    ...createRequestOptions({
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text }),
+    }),
+  })
+
+  return parseResponse(response)
+}
+
+export const updateWorkTask = async (taskId, done) => {
+  const response = await fetch(`${API_BASE_URL}/work-project/tasks/${taskId}`, {
+    ...createRequestOptions({
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ done }),
+    }),
+  })
+
+  return parseResponse(response)
+}
+
+export const deleteWorkTask = async (taskId) => {
+  const response = await fetch(`${API_BASE_URL}/work-project/tasks/${taskId}`, {
+    ...createRequestOptions({
+      method: 'DELETE',
+    }),
+  })
+
+  return parseResponse(response)
+}
+
 export const fetchFinanceWorkspace = async ({ month } = {}) => {
   const params = new URLSearchParams()
 

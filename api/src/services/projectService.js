@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto'
 import { ProjectWorkspace } from '../models/ProjectWorkspace.js'
 
 const WORKSPACE_KEY = 'main'
+const PERSONAL_WORK_PROJECT_KEY_PREFIX = 'work'
+const PERSONAL_WORK_PROJECT_NAME = 'Trabalho'
+const PERSONAL_WORK_PROJECT_SLUG = 'trabalho'
 
 const slugify = (value) =>
   String(value || '')
@@ -113,6 +116,42 @@ const ensureUniqueSlug = (workspace, name, currentProjectId = '') => {
 }
 
 const findProject = (workspace, projectId) => workspace.projects.find((project) => project.id === projectId)
+const buildPersonalWorkProjectKey = (userId) => `${PERSONAL_WORK_PROJECT_KEY_PREFIX}:${String(userId || '').trim()}`
+
+const getOrCreatePersonalWorkProjectWorkspace = async ({ userId }) => {
+  const workspaceKey = buildPersonalWorkProjectKey(userId)
+  let workspace = await ProjectWorkspace.findOne({ key: workspaceKey })
+
+  if (!workspace) {
+    workspace = await ProjectWorkspace.create({
+      key: workspaceKey,
+      projects: [buildProject(PERSONAL_WORK_PROJECT_NAME, { slug: PERSONAL_WORK_PROJECT_SLUG, tasks: [], notes: [] })],
+    })
+
+    return workspace
+  }
+
+  const normalizedProjects = workspace.projects.map(normalizeProject).filter((project) => project.name)
+  const changed = JSON.stringify(normalizedProjects) !== JSON.stringify(workspace.projects)
+
+  if (changed) {
+    workspace.projects = normalizedProjects
+  }
+
+  const existingWorkProject = workspace.projects.find((project) => project.slug === PERSONAL_WORK_PROJECT_SLUG)
+
+  if (!existingWorkProject) {
+    workspace.projects.unshift(
+      buildProject(PERSONAL_WORK_PROJECT_NAME, { slug: PERSONAL_WORK_PROJECT_SLUG, tasks: [], notes: [] }),
+    )
+  }
+
+  if (changed || !existingWorkProject) {
+    await workspace.save()
+  }
+
+  return workspace
+}
 
 export const getOrCreateProjectWorkspace = async () => {
   let workspace = await ProjectWorkspace.findOne({ key: WORKSPACE_KEY })
@@ -254,6 +293,48 @@ export const removeProjectNote = async (projectId, noteId) => {
   }
 
   project.notes = nextNotes
+  await workspace.save()
+  return formatWorkspace(workspace)
+}
+
+export const listPersonalWorkProject = async (auth) => {
+  const workspace = await getOrCreatePersonalWorkProjectWorkspace(auth)
+  return formatWorkspace(workspace)
+}
+
+export const addPersonalWorkTask = async (auth, text) => {
+  const workspace = await getOrCreatePersonalWorkProjectWorkspace(auth)
+  const workProject = workspace.projects.find((project) => project.slug === PERSONAL_WORK_PROJECT_SLUG)
+
+  workProject.tasks.push(buildTask(text))
+  await workspace.save()
+  return formatWorkspace(workspace)
+}
+
+export const updatePersonalWorkTaskState = async (auth, taskId, done) => {
+  const workspace = await getOrCreatePersonalWorkProjectWorkspace(auth)
+  const workProject = workspace.projects.find((project) => project.slug === PERSONAL_WORK_PROJECT_SLUG)
+  const task = workProject.tasks.find((item) => item.id === taskId)
+
+  if (!task) {
+    return false
+  }
+
+  task.done = done
+  await workspace.save()
+  return formatWorkspace(workspace)
+}
+
+export const removePersonalWorkTask = async (auth, taskId) => {
+  const workspace = await getOrCreatePersonalWorkProjectWorkspace(auth)
+  const workProject = workspace.projects.find((project) => project.slug === PERSONAL_WORK_PROJECT_SLUG)
+  const nextTasks = workProject.tasks.filter((task) => task.id !== taskId)
+
+  if (nextTasks.length === workProject.tasks.length) {
+    return false
+  }
+
+  workProject.tasks = nextTasks
   await workspace.save()
   return formatWorkspace(workspace)
 }
