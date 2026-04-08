@@ -83,12 +83,85 @@ const cloneDays = (days = []) =>
   }))
 
 const LEGACY_DAY_IDS = new Set(['today', 'tomorrow', 'monday', 'tuesday'])
+const LEGACY_MONTH_INDEX = {
+  jan: 0,
+  fev: 1,
+  feb: 1,
+  mar: 2,
+  abr: 3,
+  apr: 3,
+  mai: 4,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  ago: 7,
+  aug: 7,
+  set: 8,
+  sep: 8,
+  out: 9,
+  oct: 9,
+  nov: 10,
+  dez: 11,
+  dec: 11,
+}
 
 const buildDateFromOffset = (offset = 0) => {
   const date = new Date()
   date.setDate(date.getDate() + offset)
   return date
 }
+
+const parseLegacyDate = (value) => {
+  const normalizedValue = String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+
+  const match = normalizedValue.match(/^(\d{1,2})\s+([a-z]{3,})$/)
+
+  if (!match) {
+    return null
+  }
+
+  const [, dayValue, monthLabel] = match
+  const monthIndex = LEGACY_MONTH_INDEX[monthLabel.slice(0, 3)]
+
+  if (monthIndex === undefined) {
+    return null
+  }
+
+  const now = new Date()
+  const year = now.getFullYear()
+  const parsedDate = new Date(year, monthIndex, Number(dayValue), 12, 0, 0, 0)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null
+  }
+
+  // Legacy labels like "26 Mar" are historical cards. Keep them in the past
+  // when the current year's date would fall ahead of the current week.
+  const oneWeekAhead = buildDateFromOffset(7)
+
+  if (parsedDate > oneWeekAhead) {
+    parsedDate.setFullYear(parsedDate.getFullYear() - 1)
+  }
+
+  return parsedDate
+}
+
+const buildSeedDaySignature = (day) => {
+  const note = String(day?.note || '').trim()
+  const tasks = Array.isArray(day?.tasks)
+    ? day.tasks.map((task) => String(task?.text || '').trim()).filter(Boolean)
+    : []
+
+  return JSON.stringify({ note, tasks })
+}
+
+const DEFAULT_DAY_SIGNATURES = new Map(
+  defaultDays.map((day) => [buildSeedDaySignature(day), day]),
+)
 
 const normalizeLegacyBoardDays = (board) => {
   if (!Array.isArray(board.days) || board.days.length === 0) {
@@ -105,7 +178,7 @@ const normalizeLegacyBoardDays = (board) => {
   }
 
   board.days = board.days.map((day, index) => {
-    const nextDate = buildDateFromOffset(index)
+    const nextDate = parseLegacyDate(day?.date) || buildDateFromOffset(index - board.days.length)
 
     return {
       ...day,
@@ -117,6 +190,46 @@ const normalizeLegacyBoardDays = (board) => {
   })
 
   return true
+}
+
+const repairMigratedSeedDays = (board) => {
+  if (!Array.isArray(board.days) || board.days.length === 0) {
+    return false
+  }
+
+  let hasChanges = false
+
+  board.days = board.days.map((day, index) => {
+    const matchedDefaultDay = DEFAULT_DAY_SIGNATURES.get(buildSeedDaySignature(day))
+
+    if (!matchedDefaultDay) {
+      return day
+    }
+
+    const expectedDate = parseLegacyDate(matchedDefaultDay.date) || buildDateFromOffset(index - board.days.length)
+    const expectedDateKey = toDateKey(expectedDate)
+    const expectedLabel = toDayLabel(expectedDate)
+    const expectedDateLabel = toDateLabel(expectedDate)
+
+    if (
+      String(day.dateKey || '') === expectedDateKey
+      && String(day.label || '') === expectedLabel
+      && String(day.date || '') === expectedDateLabel
+    ) {
+      return day
+    }
+
+    hasChanges = true
+
+    return {
+      ...day,
+      dateKey: expectedDateKey,
+      label: expectedLabel,
+      date: expectedDateLabel,
+    }
+  })
+
+  return hasChanges
 }
 
 const buildLuluDefaultDays = () => [
@@ -212,6 +325,10 @@ export const getOrCreateBoard = async ({ userId, username }) => {
   }
 
   if (normalizeLegacyBoardDays(board)) {
+    await board.save()
+  }
+
+  if (repairMigratedSeedDays(board)) {
     await board.save()
   }
 
