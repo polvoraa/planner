@@ -6,16 +6,16 @@
   --color-surface-2: #20242c;
   --color-border: #2a303a;
   --color-border-strong: rgba(var(--color-accent-rgb), 0.34);
-  --color-accent: var(--color-accent);
-  --color-accent-soft: var(--color-accent-soft);
+  --color-accent: #ff6a00;
+  --color-accent-soft: #ffb066;
   --color-accent-rgb: 255, 106, 0;
   --color-accent-secondary-rgb: 255, 176, 102;
   --color-accent-tertiary-rgb: 255, 127, 42;
   --color-success-bg: rgba(103, 210, 143, 0.14);
   --color-success-border: rgba(103, 210, 143, 0.22);
-  --color-danger-bg: var(--color-danger-bg);
-  --color-danger-border: var(--color-danger-border);
-  --color-danger-text: var(--color-danger-text);
+  --color-danger-bg: rgba(255, 90, 90, 0.14);
+  --color-danger-border: rgba(255, 90, 90, 0.24);
+  --color-danger-text: #ffb6b6;
 }
 
 :root[data-theme='ocean'] {
