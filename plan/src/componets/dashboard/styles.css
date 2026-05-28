@@ -384,6 +384,19 @@
   min-width: 0;
 }
 
+.task-item[draggable='true'] {
+  cursor: grab;
+}
+
+.task-item[draggable='true']:active {
+  cursor: grabbing;
+}
+
+.task-item.is-dragging {
+  opacity: 0.58;
+  border-color: rgba(var(--color-accent-rgb), 0.58);
+}
+
 .task-check {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

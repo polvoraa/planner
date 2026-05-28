@@ -19,6 +19,7 @@ import {
   listDays,
   removeDay,
   removeTaskFromDay,
+  reorderDayTasks,
   updateTaskState,
 } from './services/plannerService.js'
 import {
@@ -37,6 +38,8 @@ import {
   removeProjectNote,
   removeProjectTask,
   removePersonalWorkTask,
+  reorderPersonalWorkTasks,
+  reorderProjectTasks,
   updateProjectTaskState,
   updatePersonalWorkTaskState,
 } from './services/projectService.js'
@@ -60,6 +63,24 @@ const allowedOrigins = String(process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')
   .map((item) => item.trim())
   .filter(Boolean)
+const isProduction = process.env.NODE_ENV === 'production'
+
+const isAllowedCorsOrigin = (origin) => {
+  if (!origin || allowedOrigins.includes(origin)) {
+    return true
+  }
+
+  if (isProduction) {
+    return false
+  }
+
+  try {
+    const { hostname, protocol } = new URL(origin)
+    return protocol === 'http:' && ['localhost', '127.0.0.1'].includes(hostname)
+  } catch {
+    return false
+  }
+}
 
 if (!mongoUri) {
   throw new Error('MONGODB_URI nao configurado.')
@@ -68,7 +89,7 @@ if (!mongoUri) {
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (isAllowedCorsOrigin(origin)) {
         callback(null, true)
         return
       }
@@ -216,6 +237,15 @@ app.post('/api/work-project/tasks', requireAuth, async (request, response, next)
   try {
     const data = await addPersonalWorkTask(request.auth, text)
     response.status(201).json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.patch('/api/work-project/tasks/reorder', requireAuth, async (request, response, next) => {
+  try {
+    const data = await reorderPersonalWorkTasks(request.auth, request.body?.taskIds)
+    response.json(data)
   } catch (error) {
     next(error)
   }
@@ -422,6 +452,21 @@ app.post('/api/projects/:projectId/tasks', requireAuth, async (request, response
     }
 
     response.status(201).json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.patch('/api/projects/:projectId/tasks/reorder', requireAuth, async (request, response, next) => {
+  try {
+    const data = await reorderProjectTasks(request.params.projectId, request.body?.taskIds)
+
+    if (data === null) {
+      response.status(404).json({ message: 'Projeto nao encontrado.' })
+      return
+    }
+
+    response.json(data)
   } catch (error) {
     next(error)
   }
@@ -642,6 +687,21 @@ app.post('/api/days/:dayId/tasks', requireAuth, async (request, response, next) 
     }
 
     response.status(201).json(data)
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.patch('/api/days/:dayId/tasks/reorder', requireAuth, async (request, response, next) => {
+  try {
+    const data = await reorderDayTasks(request.auth, request.params.dayId, request.body?.taskIds)
+
+    if (data === null) {
+      response.status(404).json({ message: 'Dia nao encontrado.' })
+      return
+    }
+
+    response.json(data)
   } catch (error) {
     next(error)
   }

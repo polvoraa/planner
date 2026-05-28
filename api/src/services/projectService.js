@@ -246,6 +246,24 @@ export const updateProjectTaskState = async (projectId, taskId, done) => {
   return formatWorkspace(workspace)
 }
 
+export const reorderProjectTasks = async (projectId, taskIds) => {
+  const workspace = await getOrCreateProjectWorkspace()
+  const project = findProject(workspace, projectId)
+
+  if (!project) {
+    return null
+  }
+
+  const orderedIds = Array.isArray(taskIds) ? taskIds.map((id) => String(id || '').trim()).filter(Boolean) : []
+  const tasksById = new Map(project.tasks.map((task) => [task.id, task]))
+  const orderedTasks = orderedIds.map((taskId) => tasksById.get(taskId)).filter(Boolean)
+  const remainingTasks = project.tasks.filter((task) => !orderedIds.includes(task.id))
+
+  project.tasks = [...orderedTasks, ...remainingTasks]
+  await workspace.save()
+  return formatWorkspace(workspace)
+}
+
 export const removeProjectTask = async (projectId, taskId) => {
   const workspace = await getOrCreateProjectWorkspace()
   const project = findProject(workspace, projectId)
@@ -321,6 +339,19 @@ export const updatePersonalWorkTaskState = async (auth, taskId, done) => {
   }
 
   task.done = done
+  await workspace.save()
+  return formatWorkspace(workspace)
+}
+
+export const reorderPersonalWorkTasks = async (auth, taskIds) => {
+  const workspace = await getOrCreatePersonalWorkProjectWorkspace(auth)
+  const workProject = workspace.projects.find((project) => project.slug === PERSONAL_WORK_PROJECT_SLUG)
+  const orderedIds = Array.isArray(taskIds) ? taskIds.map((id) => String(id || '').trim()).filter(Boolean) : []
+  const tasksById = new Map(workProject.tasks.map((task) => [task.id, task]))
+  const orderedTasks = orderedIds.map((taskId) => tasksById.get(taskId)).filter(Boolean)
+  const remainingTasks = workProject.tasks.filter((task) => !orderedIds.includes(task.id))
+
+  workProject.tasks = [...orderedTasks, ...remainingTasks]
   await workspace.save()
   return formatWorkspace(workspace)
 }

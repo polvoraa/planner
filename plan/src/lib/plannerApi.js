@@ -117,6 +117,20 @@ export const updateTask = async (dayId, taskId, done) => {
   return parseResponse(response)
 }
 
+export const reorderDayTasks = async (dayId, taskIds) => {
+  const response = await fetch(`${API_BASE_URL}/days/${dayId}/tasks/reorder`, {
+    ...createRequestOptions({
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ taskIds }),
+    }),
+  })
+
+  return parseResponse(response)
+}
+
 export const deleteTask = async (dayId, taskId) => {
   const response = await fetch(`${API_BASE_URL}/days/${dayId}/tasks/${taskId}`, {
     ...createRequestOptions({
@@ -179,6 +193,20 @@ export const updateWorkTask = async (taskId, done) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ done }),
+    }),
+  })
+
+  return parseResponse(response)
+}
+
+export const reorderWorkTasks = async (taskIds) => {
+  const response = await fetch(`${API_BASE_URL}/work-project/tasks/reorder`, {
+    ...createRequestOptions({
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ taskIds }),
     }),
   })
 
@@ -328,6 +356,19 @@ export const updateProjectTask = async (projectId, taskId, done) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ done }),
+    }),
+  })
+  return parseResponse(response)
+}
+
+export const reorderProjectTasks = async (projectId, taskIds) => {
+  const response = await fetch(`${API_BASE_URL}/projects/${projectId}/tasks/reorder`, {
+    ...createRequestOptions({
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ taskIds }),
     }),
   })
   return parseResponse(response)

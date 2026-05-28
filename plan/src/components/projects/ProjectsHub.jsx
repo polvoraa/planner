@@ -10,8 +10,10 @@ import {
   fetchProjects,
   logout,
   previewProjectAiCommand,
+  reorderProjectTasks,
   updateProjectTask,
 } from '../../lib/plannerApi'
+import { reorderTasks, sortOpenTasksFirst } from '../../lib/tasks'
 
 const SELECTED_PROJECT_STORAGE_KEY = 'planner.selectedProjectId'
 
@@ -31,6 +33,7 @@ function ProjectsHub({ user, onLogout, onBack }) {
   const [isAiLoading, setIsAiLoading] = useState(false)
   const [isApplyingAi, setIsApplyingAi] = useState(false)
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false)
+  const [draggedTaskId, setDraggedTaskId] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
   const syncProjects = (payload) => {
@@ -100,6 +103,7 @@ function ProjectsHub({ user, onLogout, onBack }) {
 
   const completedTasks = activeProject?.tasks.filter((task) => task.done).length ?? 0
   const pendingTasks = (activeProject?.tasks.length ?? 0) - completedTasks
+  const visibleTasks = sortOpenTasksFirst(activeProject?.tasks)
 
   const selectedProjectSummary = activeProject ? (
     <header className="daily-header project-summary-card">
@@ -265,6 +269,17 @@ function ProjectsHub({ user, onLogout, onBack }) {
     } finally {
       setIsApplyingAi(false)
     }
+  }
+
+  const handleTaskDrop = async (targetTaskId) => {
+    if (!draggedTaskId || draggedTaskId === targetTaskId || isBusy || !activeProject?.id) {
+      setDraggedTaskId('')
+      return
+    }
+
+    const nextTaskIds = reorderTasks(visibleTasks, draggedTaskId, targetTaskId).map((task) => task.id)
+    setDraggedTaskId('')
+    await runMutation(() => reorderProjectTasks(activeProject.id, nextTaskIds))
   }
 
   if (isLoading) {
@@ -564,8 +579,28 @@ function ProjectsHub({ user, onLogout, onBack }) {
           </form>
 
           <div className="task-list project-task-list">
-            {activeProject.tasks.map((task) => (
-              <div key={task.id} className={`task-item project-task-item ${task.done ? 'is-done' : ''}`}>
+            {visibleTasks.map((task) => (
+              <div
+                key={task.id}
+                className={`task-item project-task-item ${task.done ? 'is-done' : ''} ${
+                  draggedTaskId === task.id ? 'is-dragging' : ''
+                }`}
+                draggable={!isBusy}
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = 'move'
+                  event.dataTransfer.setData('text/plain', task.id)
+                  setDraggedTaskId(task.id)
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  event.dataTransfer.dropEffect = 'move'
+                }}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  handleTaskDrop(task.id)
+                }}
+                onDragEnd={() => setDraggedTaskId('')}
+              >
                 <label className="task-check">
                   <input
                     type="checkbox"

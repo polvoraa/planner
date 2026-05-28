@@ -9,9 +9,12 @@ import {
   fetchWorkProject,
   deleteWorkTask,
   openTodayDay,
+  reorderDayTasks,
+  reorderWorkTasks,
   updateWorkTask,
   updateTask,
 } from '../../lib/plannerApi'
+import { reorderTasks, sortOpenTasksFirst } from '../../lib/tasks'
 import './styles.css'
 
 const SELECTED_DAY_STORAGE_KEY = 'planner.selectedDayId'
@@ -35,6 +38,7 @@ function Dashboard({ onBack, onLogout, user }) {
   const [selectedDayId, setSelectedDayId] = useState(() => localStorage.getItem(SELECTED_DAY_STORAGE_KEY) || '')
   const [draftTask, setDraftTask] = useState('')
   const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false)
+  const [draggedTaskId, setDraggedTaskId] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
@@ -52,6 +56,7 @@ function Dashboard({ onBack, onLogout, user }) {
     : days.find((day) => day.id === activeDayId) ?? days[0]
   const completedTasks = selectedDay?.tasks.filter((task) => task.done).length ?? 0
   const pendingTasks = (selectedDay?.tasks.length ?? 0) - completedTasks
+  const visibleTasks = sortOpenTasksFirst(selectedDay?.tasks)
 
   const syncDays = useCallback((payload) => {
     const nextDays = payload.board?.days || payload.days || []
@@ -298,6 +303,38 @@ function Dashboard({ onBack, onLogout, user }) {
     }
 
     await runMutation(() => deleteTask(activeDayId, taskId))
+  }
+
+  const handleTaskDrop = async (targetTaskId) => {
+    if (!draggedTaskId || draggedTaskId === targetTaskId || isSaving) {
+      setDraggedTaskId('')
+      return
+    }
+
+    const nextTaskIds = reorderTasks(visibleTasks, draggedTaskId, targetTaskId).map((task) => task.id)
+    setDraggedTaskId('')
+
+    if (isWorkSelected) {
+      setIsSaving(true)
+      setErrorMessage('')
+
+      try {
+        const payload = await reorderWorkTasks(nextTaskIds)
+        syncWorkProject(payload)
+      } catch (error) {
+        setErrorMessage(error.message)
+      } finally {
+        setIsSaving(false)
+      }
+
+      return
+    }
+
+    if (!activeDayId) {
+      return
+    }
+
+    await runMutation(() => reorderDayTasks(activeDayId, nextTaskIds))
   }
 
   if (isLoading) {
@@ -556,8 +593,26 @@ function Dashboard({ onBack, onLogout, user }) {
           </form>
 
           <div className="task-list">
-            {selectedDay.tasks.map((task) => (
-              <div key={task.id} className={`task-item ${task.done ? 'is-done' : ''}`}>
+            {visibleTasks.map((task) => (
+              <div
+                key={task.id}
+                className={`task-item ${task.done ? 'is-done' : ''} ${draggedTaskId === task.id ? 'is-dragging' : ''}`}
+                draggable={!isSaving}
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = 'move'
+                  event.dataTransfer.setData('text/plain', task.id)
+                  setDraggedTaskId(task.id)
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  event.dataTransfer.dropEffect = 'move'
+                }}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  handleTaskDrop(task.id)
+                }}
+                onDragEnd={() => setDraggedTaskId('')}
+              >
                 <label className="task-check">
                   <input
                     type="checkbox"

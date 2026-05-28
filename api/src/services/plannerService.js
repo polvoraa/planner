@@ -449,6 +449,24 @@ export const updateTaskState = async (auth, dayId, taskId, done) => {
   return formatBoard(board)
 }
 
+export const reorderDayTasks = async (auth, dayId, taskIds) => {
+  const board = await getOrCreateBoard(auth)
+  const day = findDay(board, dayId)
+
+  if (!day) {
+    return null
+  }
+
+  const orderedIds = Array.isArray(taskIds) ? taskIds.map((id) => String(id || '').trim()).filter(Boolean) : []
+  const tasksById = new Map(day.tasks.map((task) => [task.id, task]))
+  const orderedTasks = orderedIds.map((taskId) => tasksById.get(taskId)).filter(Boolean)
+  const remainingTasks = day.tasks.filter((task) => !orderedIds.includes(task.id))
+
+  day.tasks = [...orderedTasks, ...remainingTasks]
+  await board.save()
+  return formatBoard(board)
+}
+
 export const removeTaskFromDay = async (auth, dayId, taskId) => {
   const board = await getOrCreateBoard(auth)
   const day = findDay(board, dayId)
