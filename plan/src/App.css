@@ -60,6 +60,26 @@
   --color-accent-tertiary-rgb: 230, 109, 124;
 }
 
+:root[data-theme='apple'] {
+  --color-text: #f5f5f7;
+  --color-text-muted: #a1a1a6;
+  --color-surface-0: #0b0b0d;
+  --color-surface-1: #161617;
+  --color-surface-2: #1d1d1f;
+  --color-border: #303033;
+  --color-border-strong: rgba(var(--color-accent-rgb), 0.34);
+  --color-accent: #c6b4f8;
+  --color-accent-soft: #ddd3fb;
+  --color-accent-rgb: 198, 180, 248;
+  --color-accent-secondary-rgb: 159, 168, 245;
+  --color-accent-tertiary-rgb: 180, 154, 255;
+  --color-success-bg: rgba(52, 199, 89, 0.12);
+  --color-success-border: rgba(52, 199, 89, 0.22);
+  --color-danger-bg: rgba(255, 59, 48, 0.1);
+  --color-danger-border: rgba(255, 59, 48, 0.2);
+  --color-danger-text: #c82017;
+}
+
 .app-shell {
   min-height: 100svh;
   width: 100%;
@@ -97,6 +117,71 @@
   display: grid;
   gap: 24px;
   color: var(--color-text);
+}
+
+:root[data-theme='apple'] .app-shell {
+  background: #0b0b0d;
+}
+
+:root[data-theme='apple'] .daily-sidebar,
+:root[data-theme='apple'] .daily-header,
+:root[data-theme='apple'] .task-panel,
+:root[data-theme='apple'] .project-card,
+:root[data-theme='apple'] .projects-sidebar,
+:root[data-theme='apple'] .placeholder-view,
+:root[data-theme='apple'] .login-copy,
+:root[data-theme='apple'] .login-card,
+:root[data-theme='apple'] .responses-metric-card,
+:root[data-theme='apple'] .settings-feature-card,
+:root[data-theme='apple'] .ai-preview-card,
+:root[data-theme='apple'] .finance-summary-card {
+  background: var(--color-surface-1);
+  border-color: var(--color-border);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+}
+
+:root[data-theme='apple'] .task-item,
+:root[data-theme='apple'] .day-link,
+:root[data-theme='apple'] .sidebar-action,
+:root[data-theme='apple'] .sidebar-ghost-action,
+:root[data-theme='apple'] .day-delete-button,
+:root[data-theme='apple'] .theme-card,
+:root[data-theme='apple'] .mobile-panel-close,
+:root[data-theme='apple'] .mobile-menu-button {
+  background: var(--color-surface-2);
+  border-color: var(--color-border);
+  box-shadow: none;
+}
+
+:root[data-theme='apple'] .sidebar-action.is-primary,
+:root[data-theme='apple'] .task-form button,
+:root[data-theme='apple'] .status-action {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
+:root[data-theme='apple'] .day-link:hover,
+:root[data-theme='apple'] .day-link.is-active,
+:root[data-theme='apple'] .theme-card:hover,
+:root[data-theme='apple'] .theme-card.is-active {
+  background: rgba(var(--color-accent-rgb), 0.08);
+  border-color: rgba(var(--color-accent-rgb), 0.26);
+}
+
+:root[data-theme='apple'] .task-form input,
+:root[data-theme='apple'] .finance-filter-row input,
+:root[data-theme='apple'] .finance-filter-row select {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+:root[data-theme='apple'] .dock-icon-badge,
+:root[data-theme='apple'] .responses-user-chip,
+:root[data-theme='apple'] .card-tag {
+  background: rgba(var(--color-accent-rgb), 0.1);
+  color: var(--color-accent);
+  border-color: rgba(var(--color-accent-rgb), 0.18);
 }
 
 .placeholder-view {

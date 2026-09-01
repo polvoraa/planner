@@ -1,4 +1,4 @@
-import { motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'motion/react'
+import { motion as Motion, useMotionValue, useSpring, useTransform, AnimatePresence } from 'motion/react'
 import { Children, cloneElement, useEffect, useMemo, useRef, useState } from 'react'
 
 import './Dock.css'
@@ -13,6 +13,7 @@ function DockItem({
   distance,
   magnification,
   baseItemSize,
+  orientation,
 }) {
   const ref = useRef(null)
   const isHovered = useMotionValue(0)
@@ -20,10 +21,15 @@ function DockItem({
   const mouseDistance = useTransform(mouseX, (value) => {
     const rect = ref.current?.getBoundingClientRect() ?? {
       x: 0,
+      y: 0,
       width: baseItemSize,
+      height: baseItemSize,
     }
 
-    return value - rect.x - baseItemSize / 2
+    const axisStart = orientation === 'vertical' ? rect.y : rect.x
+    const axisSize = orientation === 'vertical' ? rect.height : rect.width
+
+    return value - axisStart - axisSize / 2
   })
 
   const targetSize = useTransform(
@@ -34,7 +40,7 @@ function DockItem({
   const size = useSpring(targetSize, spring)
 
   return (
-    <motion.button
+    <Motion.button
       ref={ref}
       type="button"
       style={{
@@ -50,11 +56,11 @@ function DockItem({
       aria-pressed={isActive}
     >
       {Children.map(children, (child) => cloneElement(child, { isHovered }))}
-    </motion.button>
+    </Motion.button>
   )
 }
 
-function DockLabel({ children, className = '', ...rest }) {
+function DockLabel({ children, className = '', orientation = 'horizontal', ...rest }) {
   const { isHovered } = rest
   const [isVisible, setIsVisible] = useState(false)
 
@@ -69,17 +75,17 @@ function DockLabel({ children, className = '', ...rest }) {
   return (
     <AnimatePresence>
       {isVisible ? (
-        <motion.div
-          initial={{ opacity: 0, y: 0 }}
-          animate={{ opacity: 1, y: -10 }}
-          exit={{ opacity: 0, y: 0 }}
+        <Motion.div
+          initial={{ opacity: 0, x: 0, y: 0 }}
+          animate={orientation === 'vertical' ? { opacity: 1, x: 10 } : { opacity: 1, y: -10 }}
+          exit={{ opacity: 0, x: 0, y: 0 }}
           transition={{ duration: 0.2 }}
-          className={`dock-label ${className}`.trim()}
+          className={`dock-label dock-label--${orientation} ${className}`.trim()}
           role="tooltip"
-          style={{ x: '-50%' }}
+          style={orientation === 'horizontal' ? { x: '-50%' } : undefined}
         >
           {children}
-        </motion.div>
+        </Motion.div>
       ) : null}
     </AnimatePresence>
   )
@@ -98,6 +104,7 @@ export default function Dock({
   panelHeight = 72,
   dockHeight = 96,
   baseItemSize = 52,
+  orientation = 'horizontal',
 }) {
   const mouseX = useMotionValue(Infinity)
   const isHovered = useMotionValue(0)
@@ -108,40 +115,50 @@ export default function Dock({
   )
   const heightRow = useTransform(isHovered, [0, 1], [panelHeight, maxHeight])
   const height = useSpring(heightRow, spring)
+  const primaryItems = items.filter((item) => item.placement !== 'bottom')
+  const bottomItems = items.filter((item) => item.placement === 'bottom')
+
+  const renderItems = (groupItems) =>
+    groupItems.map((item) => (
+      <DockItem
+        key={item.key}
+        onClick={item.onClick}
+        className={item.className}
+        isActive={item.isActive}
+        mouseX={mouseX}
+        spring={spring}
+        distance={distance}
+        magnification={magnification}
+        baseItemSize={baseItemSize}
+        orientation={orientation}
+      >
+        <DockIcon>{item.icon}</DockIcon>
+        <DockLabel orientation={orientation}>{item.label}</DockLabel>
+      </DockItem>
+    ))
 
   return (
-    <motion.div style={{ height, scrollbarWidth: 'none' }} className="dock-outer">
-      <motion.div
-        onMouseMove={({ pageX }) => {
+    <Motion.div
+      style={orientation === 'vertical' ? { height: '100%', scrollbarWidth: 'none' } : { height, scrollbarWidth: 'none' }}
+      className={`dock-outer dock-outer--${orientation}`}
+    >
+      <Motion.div
+        onMouseMove={(event) => {
           isHovered.set(1)
-          mouseX.set(pageX)
+          mouseX.set(orientation === 'vertical' ? event.pageY : event.pageX)
         }}
         onMouseLeave={() => {
           isHovered.set(0)
           mouseX.set(Infinity)
         }}
-        className={`dock-panel ${className}`.trim()}
-        style={{ height: panelHeight }}
+        className={`dock-panel dock-panel--${orientation} ${className}`.trim()}
+        style={orientation === 'horizontal' ? { height: panelHeight } : undefined}
         role="toolbar"
         aria-label="Atalhos do workspace"
       >
-        {items.map((item) => (
-          <DockItem
-            key={item.key}
-            onClick={item.onClick}
-            className={item.className}
-            isActive={item.isActive}
-            mouseX={mouseX}
-            spring={spring}
-            distance={distance}
-            magnification={magnification}
-            baseItemSize={baseItemSize}
-          >
-            <DockIcon>{item.icon}</DockIcon>
-            <DockLabel>{item.label}</DockLabel>
-          </DockItem>
-        ))}
-      </motion.div>
-    </motion.div>
+        <div className="dock-primary-items">{renderItems(primaryItems)}</div>
+        {bottomItems.length ? <div className="dock-bottom-items">{renderItems(bottomItems)}</div> : null}
+      </Motion.div>
+    </Motion.div>
   )
 }

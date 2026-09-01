@@ -70,16 +70,20 @@ const isAllowedCorsOrigin = (origin) => {
     return true
   }
 
+  try {
+    const { hostname, protocol } = new URL(origin)
+    if (protocol === 'http:' && ['localhost', '127.0.0.1'].includes(hostname)) {
+      return true
+    }
+  } catch {
+    return false
+  }
+
   if (isProduction) {
     return false
   }
 
-  try {
-    const { hostname, protocol } = new URL(origin)
-    return protocol === 'http:' && ['localhost', '127.0.0.1'].includes(hostname)
-  } catch {
-    return false
-  }
+  return false
 }
 
 if (!mongoUri) {

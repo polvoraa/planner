@@ -455,6 +455,44 @@
   border: 0;
 }
 
+:root[data-theme='apple'] .daily-sidebar,
+:root[data-theme='apple'] .daily-header,
+:root[data-theme='apple'] .task-panel {
+  background: #161617;
+  border-color: #303033;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+}
+
+:root[data-theme='apple'] .task-item,
+:root[data-theme='apple'] .day-link,
+:root[data-theme='apple'] .sidebar-action,
+:root[data-theme='apple'] .sidebar-ghost-action,
+:root[data-theme='apple'] .day-delete-button,
+:root[data-theme='apple'] .daily-stats article {
+  background: #1d1d1f;
+  border-color: #303033;
+  box-shadow: none;
+}
+
+:root[data-theme='apple'] .sidebar-action.is-primary,
+:root[data-theme='apple'] .task-form button,
+:root[data-theme='apple'] .status-action {
+  background: var(--color-accent);
+  color: #0a090d;
+}
+
+:root[data-theme='apple'] .day-link:hover,
+:root[data-theme='apple'] .day-link.is-active {
+  background: rgba(var(--color-accent-rgb), 0.12);
+  border-color: rgba(var(--color-accent-rgb), 0.32);
+}
+
+:root[data-theme='apple'] .task-form input {
+  background: #1d1d1f;
+  color: #f5f5f7;
+  border-color: #303033;
+}
+
 @media (max-width: 960px) {
   .daily-page {
     grid-template-columns: 1fr;

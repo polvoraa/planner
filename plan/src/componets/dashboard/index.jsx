@@ -32,7 +32,7 @@ const formatDateKey = (date) => {
 
 const isValidDateKey = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''))
 
-function Dashboard({ onBack, onLogout, user }) {
+function Dashboard({ onBack, onLogout, user, isSidebarOpen = true, onSidebarOpenChange }) {
   const [days, setDays] = useState([])
   const [workProject, setWorkProject] = useState(null)
   const [selectedDayId, setSelectedDayId] = useState(() => localStorage.getItem(SELECTED_DAY_STORAGE_KEY) || '')
@@ -339,7 +339,7 @@ function Dashboard({ onBack, onLogout, user }) {
 
   if (isLoading) {
     return (
-      <section className="daily-page">
+      <section className="daily-page daily-workspace daily-workspace-state">
         <main className="daily-content">
           <section className="task-panel status-panel">
             <span className="eyebrow">Sincronizando</span>
@@ -353,7 +353,7 @@ function Dashboard({ onBack, onLogout, user }) {
 
   if (!selectedDay) {
     return (
-      <section className="daily-page">
+      <section className="daily-page daily-workspace daily-workspace-state">
         <main className="daily-content">
           <section className="task-panel status-panel">
             <span className="eyebrow">Planner vazio</span>
@@ -390,8 +390,24 @@ function Dashboard({ onBack, onLogout, user }) {
   )
 
   return (
-    <section className="daily-page">
+    <section className={`daily-page daily-workspace ${isSidebarOpen ? '' : 'is-sidebar-hidden'}`}>
       <aside className="daily-sidebar">
+        <div className="daily-sidebar-topbar">
+          <div className="daily-sidebar-identity">
+            <span className="daily-sidebar-mark" aria-hidden="true" />
+            <span>Pólvora</span>
+          </div>
+          <button
+            type="button"
+            className="sidebar-collapse-button"
+            aria-label="Ocultar menu lateral"
+            aria-expanded={isSidebarOpen}
+            onClick={() => onSidebarOpenChange?.(false)}
+          >
+            <span aria-hidden="true" />
+          </button>
+        </div>
+
         <div className="sidebar-brand">
           <span className="eyebrow">Planejamento diario</span>
           <h1>Tarefas por dia</h1>
@@ -427,6 +443,7 @@ function Dashboard({ onBack, onLogout, user }) {
             type="button"
             className={`day-link ${isWorkSelected ? 'is-active' : ''}`}
             onClick={() => handleDaySelect(WORK_DAY_ID)}
+            title="Trabalho"
           >
             <div>
               <strong>Trabalho</strong>
@@ -444,6 +461,7 @@ function Dashboard({ onBack, onLogout, user }) {
                 type="button"
                 className={`day-link ${day.id === activeDayId ? 'is-active' : ''}`}
                 onClick={() => handleDaySelect(day.id)}
+                title={day.label}
               >
                 <div>
                   <strong>{day.label}</strong>
@@ -593,7 +611,7 @@ function Dashboard({ onBack, onLogout, user }) {
           </form>
 
           <div className="task-list">
-            {visibleTasks.map((task) => (
+            {visibleTasks.length ? visibleTasks.map((task) => (
               <div
                 key={task.id}
                 className={`task-item ${task.done ? 'is-done' : ''} ${draggedTaskId === task.id ? 'is-dragging' : ''}`}
@@ -613,6 +631,14 @@ function Dashboard({ onBack, onLogout, user }) {
                 }}
                 onDragEnd={() => setDraggedTaskId('')}
               >
+                <span className="task-drag-handle" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </span>
                 <label className="task-check">
                   <input
                     type="checkbox"
@@ -633,7 +659,13 @@ function Dashboard({ onBack, onLogout, user }) {
                   Remover
                 </button>
               </div>
-            ))}
+            )) : (
+              <div className="task-empty-state">
+                <span className="eyebrow">Lista limpa</span>
+                <strong>Nenhuma tarefa neste recorte.</strong>
+                <p>Use o campo acima para registrar a próxima ação.</p>
+              </div>
+            )}
           </div>
         </section>
       </main>

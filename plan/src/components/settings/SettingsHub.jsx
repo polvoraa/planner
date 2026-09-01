@@ -124,6 +124,12 @@ const THEMES = [
     description: 'Vermelho rosado controlado para um visual mais editorial.',
     swatches: ['#ff9ca4', '#d95b6a', '#2a1b20'],
   },
+  {
+    id: 'apple',
+    name: 'Nova Flat',
+    description: 'Dark mode minimalista, superficies planas e lilas mineral discreto.',
+    swatches: ['#08080b', '#17171f', '#c6b4f8'],
+  },
 ]
 
 const THEME_LABELS = THEMES.reduce((accumulator, theme) => {

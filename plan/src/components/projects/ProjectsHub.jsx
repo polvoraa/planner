@@ -601,6 +601,14 @@ function ProjectsHub({ user, onLogout, onBack }) {
                 }}
                 onDragEnd={() => setDraggedTaskId('')}
               >
+                <span className="task-drag-handle" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </span>
                 <label className="task-check">
                   <input
                     type="checkbox"

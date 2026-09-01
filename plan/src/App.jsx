@@ -9,8 +9,10 @@ import ResponsesHub from './components/responses/ResponsesHub'
 import SettingsHub from './components/settings/SettingsHub'
 import { fetchDays, fetchResponses, fetchSession } from './lib/plannerApi'
 import './App.css'
+import './identity.css'
 
 const THEME_STORAGE_KEY = 'planner.theme'
+const PLANNER_SIDEBAR_STORAGE_KEY = 'planner.sidebarCollapsed'
 const routes = {
   home: '',
   planner: '#planner',
@@ -48,6 +50,7 @@ const iconPaths = {
   finance: 'M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5v-11ZM8 9h8M8 13h3M15.5 12.5l1 1 2-2',
   assistant: 'M12 4a8 8 0 1 1 0 16a8 8 0 0 1 0-16Zm0 3.25a2.25 2.25 0 0 0-2.25 2.25M12 15.5h.01M11.95 12.2c0-1.15 1.8-1.43 1.8-3.2a1.75 1.75 0 1 0-3.5 0',
   settings: 'M12 3.75l1.12 2.27 2.5.36-1.81 1.76.43 2.49L12 9.45l-2.24 1.18.43-2.49-1.81-1.76 2.5-.36L12 3.75Zm0 10a2.25 2.25 0 1 0 0 4.5a2.25 2.25 0 0 0 0-4.5Z',
+  sidebar: 'M4 5.5A1.5 1.5 0 0 1 5.5 4h13A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-13ZM9 4v16M13 9l-2.5 3 2.5 3',
 }
 
 const getViewFromHash = (hash) => {
@@ -73,6 +76,9 @@ function App() {
   const [activeView, setActiveView] = useState(() => getViewFromHash(window.location.hash))
   const [isCompactDock, setIsCompactDock] = useState(() => window.innerWidth <= 720)
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_STORAGE_KEY) || 'ember')
+  const [isPlannerSidebarOpen, setIsPlannerSidebarOpen] = useState(
+    () => localStorage.getItem(PLANNER_SIDEBAR_STORAGE_KEY) !== 'true',
+  )
   const [plannerDays, setPlannerDays] = useState([])
   const [responsesSummary, setResponsesSummary] = useState({
     total: 0,
@@ -111,6 +117,10 @@ function App() {
     document.documentElement.dataset.theme = theme
     localStorage.setItem(THEME_STORAGE_KEY, theme)
   }, [theme])
+
+  useEffect(() => {
+    localStorage.setItem(PLANNER_SIDEBAR_STORAGE_KEY, String(!isPlannerSidebarOpen))
+  }, [isPlannerSidebarOpen])
 
   useEffect(() => {
     const loadSession = async () => {
@@ -219,6 +229,16 @@ function App() {
       icon: <WorkspaceIcon path={iconPaths.planner} active={activeView === 'planner'} />,
       onClick: () => navigateTo('planner'),
     },
+    activeView !== 'home' && !isCompactDock
+      ? {
+          key: 'workspace-panel',
+          label: isPlannerSidebarOpen ? 'Ocultar painel' : 'Mostrar painel',
+          isActive: !isPlannerSidebarOpen,
+          placement: 'bottom',
+          icon: <WorkspaceIcon path={iconPaths.sidebar} active={!isPlannerSidebarOpen} />,
+          onClick: () => setIsPlannerSidebarOpen((current) => !current),
+        }
+      : null,
     {
       key: 'messages',
       label: responsesSummary.unreadTotal ? `Mensagens (${responsesSummary.unreadTotal})` : 'Mensagens',
@@ -254,10 +274,11 @@ function App() {
       icon: <WorkspaceIcon path={iconPaths.settings} active={activeView === 'settings'} />,
       onClick: () => navigateTo('settings'),
     },
-  ]
+  ].filter(Boolean)
 
   const dockProps = isCompactDock
     ? {
+        orientation: 'horizontal',
         panelHeight: 58,
         baseItemSize: 42,
         magnification: 42,
@@ -265,11 +286,22 @@ function App() {
         dockHeight: 58,
         spring: { mass: 0.1, stiffness: 400, damping: 40 },
       }
-    : { panelHeight: 32, baseItemSize: 48, magnification: 64, distance: 180, dockHeight: 96 }
+    : {
+        orientation: 'vertical',
+        panelHeight: 44,
+        baseItemSize: 34,
+        magnification: 40,
+        distance: 88,
+        dockHeight: 96,
+      }
+
+  const workspaceShellClass = `app-shell app-shell-with-dock is-workspace-view ${
+    isPlannerSidebarOpen ? '' : 'is-secondary-sidebar-hidden'
+  }`.trim()
 
   if (activeView === 'planner') {
     return (
-      <main className="app-shell app-shell-with-dock">
+      <main className={workspaceShellClass}>
         {!authState.checked ? (
           <section className="placeholder-view">
             <span className="hero-kicker">Autenticacao</span>
@@ -277,7 +309,13 @@ function App() {
             <p>Aguarde enquanto verificamos se voce ja tem acesso ao planner.</p>
           </section>
         ) : authState.authenticated ? (
-          <Dashboard onBack={openHome} user={authState.user} onLogout={handleAuthLogout} />
+          <Dashboard
+            onBack={openHome}
+            user={authState.user}
+            onLogout={handleAuthLogout}
+            isSidebarOpen={isPlannerSidebarOpen}
+            onSidebarOpenChange={setIsPlannerSidebarOpen}
+          />
         ) : (
           <LoginGate
             onAuthenticated={handleAuthenticated}
@@ -295,7 +333,7 @@ function App() {
 
   if (activeView === 'messages') {
     return (
-      <main className="app-shell app-shell-with-dock">
+      <main className={workspaceShellClass}>
         {!authState.checked ? (
           <section className="placeholder-view">
             <span className="hero-kicker">Autenticacao</span>
@@ -321,7 +359,7 @@ function App() {
 
   if (activeView === 'projects') {
     return (
-      <main className="app-shell app-shell-with-dock">
+      <main className={workspaceShellClass}>
         {!authState.checked ? (
           <section className="placeholder-view">
             <span className="hero-kicker">Autenticacao</span>
@@ -347,7 +385,7 @@ function App() {
 
   if (activeView === 'finance') {
     return (
-      <main className="app-shell app-shell-with-dock">
+      <main className={workspaceShellClass}>
         {!authState.checked ? (
           <section className="placeholder-view">
             <span className="hero-kicker">Autenticacao</span>
@@ -373,7 +411,7 @@ function App() {
 
   if (activeView === 'assistant') {
     return (
-      <main className="app-shell app-shell-with-dock">
+      <main className={workspaceShellClass}>
         {!authState.checked ? (
           <section className="placeholder-view">
             <span className="hero-kicker">Autenticacao</span>
@@ -399,7 +437,7 @@ function App() {
 
   if (activeView === 'settings') {
     return (
-      <main className="app-shell app-shell-with-dock">
+      <main className={workspaceShellClass}>
         {!authState.checked ? (
           <section className="placeholder-view">
             <span className="hero-kicker">Autenticacao</span>
@@ -431,39 +469,58 @@ function App() {
   }
 
   return (
-    <main className="app-shell app-shell-with-dock">
+    <main className="app-shell app-shell-with-dock is-home-view">
       <section className="workspace-home">
+        <div className="workspace-menubar" aria-label="Status do workspace">
+          <div className="workspace-wordmark">
+            <span className="workspace-mark" aria-hidden="true" />
+            <strong>Pólvora</strong>
+            <span>/ Operações</span>
+          </div>
+          <div className="workspace-status">
+            <span className="workspace-status-dot" aria-hidden="true" />
+            Sistema online
+          </div>
+        </div>
+
         <header className="workspace-hero">
           <div className="hero-copy">
-            <span className="hero-kicker">Workspace central</span>
-            <h1>Um painel unico para operacao, rotina e acompanhamento.</h1>
+            <span className="hero-kicker">Central de comando</span>
+            <h1>Planejar.<br />Gerenciar.<br /><em>Executar.</em></h1>
             <p>
-              O planner agora vira uma aba dentro de um dashboard principal. As outras areas ja ficam
-              desenhadas como proximas entregas para voce expandir depois.
+              Tudo que move os projetos reunido em uma superfície: rotina, conversas, entregas e
+              financeiro, sem ruído entre a ideia e a ação.
             </p>
 
             <div className="hero-actions">
               <button type="button" className="hero-button is-primary" onClick={() => navigateTo('planner')}>
-                Abrir planner
+                Abrir o dia
               </button>
-              <button type="button" className="hero-button" disabled>
-                Personalizar dashboard
+              <button type="button" className="hero-button" onClick={() => navigateTo('projects')}>
+                Ver projetos
               </button>
             </div>
           </div>
 
           <section className="hero-panel">
+            <div className="hero-panel-head">
+              <span>Visão de hoje</span>
+              <small>{authState.authenticated ? 'Dados sincronizados' : 'Aguardando login'}</small>
+            </div>
             <div className="hero-metric">
-              <span>Execucao atual</span>
+              <span>Execução</span>
               <strong>{completionRate}%</strong>
             </div>
             <div className="hero-metric">
-              <span>Tarefas concluidas</span>
+              <span>Concluídas</span>
               <strong>{completedTasks}</strong>
             </div>
             <div className="hero-metric">
-              <span>Total monitorado</span>
+              <span>Em foco</span>
               <strong>{totalTasks}</strong>
+            </div>
+            <div className="hero-progress" aria-label={`${completionRate}% concluído`}>
+              <span style={{ transform: `scaleX(${completionRate / 100})` }} />
             </div>
           </section>
         </header>
